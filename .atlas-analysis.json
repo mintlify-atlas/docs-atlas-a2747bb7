@@ -1,0 +1,120 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "OpenLand",
+  "projectDescription": "R package for quantitative analysis and visualization of land use and land cover change",
+  "theme": "mint",
+  "primaryColor": "#228B22",
+  "lightColor": "#90EE90",
+  "darkColor": "#006400",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/intensity-analysis",
+              "concepts/data-preparation",
+              "concepts/contingency-tables"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/raster-input",
+              "guides/intensity-analysis-workflow",
+              "guides/visualization",
+              "guides/spatial-analysis"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/sao-lourenco-basin",
+              "examples/custom-datasets",
+              "examples/advanced-plotting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Data Extraction",
+            "pages": [
+              "api/contingency-table"
+            ]
+          },
+          {
+            "group": "Intensity Analysis",
+            "pages": [
+              "api/intensity-analysis",
+              "api/plot-methods"
+            ]
+          },
+          {
+            "group": "Visualization",
+            "pages": [
+              "api/sankey-land",
+              "api/chord-diagram-land",
+              "api/netgross-plot",
+              "api/barplot-land"
+            ]
+          },
+          {
+            "group": "Spatial Analysis",
+            "pages": [
+              "api/acc-changes",
+              "api/summary-map",
+              "api/summary-dir"
+            ]
+          },
+          {
+            "group": "S4 Classes",
+            "pages": [
+              "api/classes/interval",
+              "api/classes/category",
+              "api/classes/transition"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Three-level intensity analysis framework (Interval, Category, Transition)",
+    "Contingency table generation from raster time series",
+    "Interactive Sankey and Chord diagram visualizations",
+    "Net and gross change analysis",
+    "Spatial change frequency mapping",
+    "Support for irregular time intervals",
+    "S4 class system for structured analysis outputs",
+    "Integration with raster and ggplot2 ecosystems"
+  ],
+  "publicApiSurface": [
+    "contingencyTable()",
+    "intensityAnalysis()",
+    "plot()",
+    "sankeyLand()",
+    "chordDiagramLand()",
+    "netgrossplot()",
+    "barplotLand()",
+    "acc_changes()",
+    "summary_map()",
+    "summary_dir()",
+    ".demo_landscape()",
+    "Interval-class",
+    "Category-class",
+    "Transition-class"
+  ]
+}
