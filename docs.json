@@ -1,122 +1,106 @@
 {
   "$schema": "https://mintlify.com/docs.json",
+  "name": "OpenLand",
   "theme": "mint",
-  "name": "Mint Starter Kit",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#228B22",
+    "light": "#90EE90",
+    "dark": "#006400"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/reginalexavier/OpenLand"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/reginalexavier/OpenLand"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "installation",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/intensity-analysis",
+              "concepts/data-preparation",
+              "concepts/contingency-tables"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "guides/raster-input",
+              "guides/intensity-analysis-workflow",
+              "guides/visualization",
+              "guides/spatial-analysis"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Examples",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "examples/sao-lourenco-basin",
+              "examples/custom-datasets",
+              "examples/advanced-plotting"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Data Extraction",
             "pages": [
-              "api-reference/introduction"
+              "api/contingency-table"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Intensity Analysis",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/intensity-analysis",
+              "api/plot-methods"
+            ]
+          },
+          {
+            "group": "Visualization",
+            "pages": [
+              "api/sankey-land",
+              "api/chord-diagram-land",
+              "api/netgross-plot",
+              "api/barplot-land"
+            ]
+          },
+          {
+            "group": "Spatial Analysis",
+            "pages": [
+              "api/acc-changes",
+              "api/summary-map",
+              "api/summary-dir"
+            ]
+          },
+          {
+            "group": "S4 Classes",
+            "pages": [
+              "api/classes/interval",
+              "api/classes/category",
+              "api/classes/transition"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

@@ -1,0 +1,96 @@
+---
+title: "Interval Class"
+description: "S4 class for Interval level results of Intensity Analysis"
+---
+
+## Description
+
+The `Interval` class is an S4 class that stores the results of Intensity Analysis at the **Interval level**. This is the first level of intensity analysis, which examines how the size and rate of change varies across time intervals.
+
+## Class Definition
+
+```r
+setClass(
+  Class = "Interval",
+  slots = c(intervalData = "tbl_df")
+)
+```
+
+## Slots
+
+<ParamField path="intervalData" type="tibble (tbl_df)">
+  A table with the results of an Intensity analysis at the Interval level, containing **St** (annual intensity) and **U** (uniform intensity) values.
+  
+  Must be a tibble with exactly 4 columns:
+  1. **Period** (`<fct>`): The period of interest [Y<sub>t</sub>, Y<sub>t+1</sub>]
+  2. **PercentChange** (`<dbl>`): Changed area on the Interval level (%)
+  3. **St** (`<dbl>`): Annual intensity of change for the time period [Y<sub>t</sub>, Y<sub>t+1</sub>]
+  4. **U** (`<dbl>`): Uniform intensity for a LUC category change in the time period of interest
+</ParamField>
+
+## Details
+
+### Interval Level Analysis
+
+The Interval level is the first of three levels in Intensity Analysis. It answers the question: **"How does the rate of change vary across time intervals?"**
+
+- **St (Annual Intensity)**: The observed annual rate of change during each time interval
+- **U (Uniform Intensity)**: The hypothetical rate of change if the total change were distributed uniformly across all time intervals
+
+By comparing St to U:
+- If **St > U**: The interval experienced faster change than the overall average
+- If **St < U**: The interval experienced slower change than the overall average
+
+### Validity Check
+
+The class includes a validity function that ensures:
+- The `intervalData` slot contains a tibble (`tbl_df`)
+- The tibble has exactly 4 columns
+
+## Usage in Intensity Analysis
+
+The `Interval` object is created by the `intensityAnalysis()` function:
+
+```r
+# Run intensity analysis
+my_test <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",
+  category_m = "SG"
+)
+
+# Access the Interval level result
+interval_result <- my_test$interval_lvl
+
+# View the object
+interval_result
+#> An object of class "Interval"
+#> Slot "intervalData":
+#> # A tibble: 4 × 4
+#>   Period    PercentChange    St     U
+#>   <fct>             <dbl> <dbl> <dbl>
+#> 1 2002-2008          5.23  0.87  0.92
+#> 2 2008-2010          4.82  2.41  0.92
+#> 3 2010-2012          4.24  2.12  0.92
+#> 4 2012-2014          3.32  1.66  0.92
+```
+
+## Plotting
+
+The `Interval` class has a dedicated plot method:
+
+```r
+plot(interval_result)
+```
+
+This generates a visualization showing:
+- Annual intensity (St) for each time interval as bars
+- Uniform intensity (U) as a reference line
+- Easy identification of intervals with faster or slower change
+
+## See Also
+
+- [`Category`](/api/classes/category) - S4 class for Category level analysis
+- [`Transition`](/api/classes/transition) - S4 class for Transition level analysis
+- `intensityAnalysis()` - Function that creates Interval objects
+- `plot()` - Method for visualizing Interval objects

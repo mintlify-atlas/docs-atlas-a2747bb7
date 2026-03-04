@@ -1,0 +1,158 @@
+---
+title: intensityAnalysis
+description: Perform intensity analysis on land use and cover change data
+---
+
+## Function Signature
+
+```r
+intensityAnalysis(dataset, category_n, category_m, area_km2 = TRUE)
+```
+
+## Description
+
+This function implements Intensity Analysis (IA) according to Aldwaik & Pontius (2012), a quantitative method to analyze time series of land use and cover (LUC) maps. For IA, a cross-tabulation matrix is composed for each LUC transition step in time.
+
+Intensity Analysis examines patterns and processes of land change across three analysis levels, with each consecutive level providing more detailed information than the previous one.
+
+## Analysis Levels
+
+Intensity Analysis includes three levels of analysis:
+
+1. **Interval Level** - Examines how the size and speed of change vary across time intervals
+2. **Category Level** - Examines how the size and intensity of gross losses and gross gains in each category vary across categories for each time interval
+3. **Transition Level** - Examines how the size and intensity of a category's transitions vary across the other categories that are available for that transition
+
+At each analysis level, the method tests for stationarity of patterns across time intervals.
+
+## Parameters
+
+<ParamField path="dataset" type="list" required>
+  The result object from `contingencyTable()`. This should be the complete list output containing all 5 objects (lulc_Multistep, lulc_Onestep, tb_legend, totalArea, and totalInterval).
+</ParamField>
+
+<ParamField path="category_n" type="character" required>
+  The gaining category in the transition of interest (*n*). This specifies which land category to analyze for gains.
+</ParamField>
+
+<ParamField path="category_m" type="character" required>
+  The losing category in the transition of interest (*m*). This specifies which land category to analyze for losses.
+</ParamField>
+
+<ParamField path="area_km2" type="logical" default="TRUE">
+  If `TRUE`, the change is computed in km². If `FALSE`, the change is computed in pixel counts.
+</ParamField>
+
+## Return Value
+
+Returns a list containing 6 objects:
+
+<ResponseField name="lulc_table" type="tibble">
+  Contingency table of LUC transitions at all analysed time steps, containing 6 columns:
+  
+  - **Period** (`<fct>`): Evaluated period of transition in the format "year t - year t+1"
+  - **From** (`<fct>`): The category in year t
+  - **To** (`<fct>`): The category in year t+1
+  - **km2** (`<dbl>`): Area in square kilometers that transited from the category `From` to the category `To` in the period
+  - **QtPixel** (`<int>`): Number of pixels that transited from the category `From` to the category `To` in the period
+  - **Interval** (`<int>`): Interval in years of the evaluated period
+</ResponseField>
+
+<ResponseField name="interval_lvl" type="Interval object">
+  An `Interval` S4 class object containing the *St* (annual intensity of change for each time interval) and *U* (uniform intensity of change) values for the interval level analysis.
+  
+  This object represents the first level of intensity analysis and can be visualized using the `plot()` method.
+</ResponseField>
+
+<ResponseField name="category_lvlGain" type="Category object">
+  A `Category` S4 class object containing the gain of the LUC category in a period (*Gtj*).
+  
+  This represents the category level analysis for gains and includes:
+  - Gross gain values for each category
+  - Annual intensity of gain for each category
+  - Stationarity test results
+</ResponseField>
+
+<ResponseField name="category_lvlLoss" type="Category object">
+  A `Category` S4 class object containing the loss of the LUC category in a period (*Lti*).
+  
+  This represents the category level analysis for losses and includes:
+  - Gross loss values for each category
+  - Annual intensity of loss for each category
+  - Stationarity test results
+</ResponseField>
+
+<ResponseField name="transition_lvlGain_n" type="Transition object">
+  A `Transition` S4 class object containing the annualized rate of gain in *category n* (*Rtin*) and the respective Uniform Intensity (*Wtn*).
+  
+  This represents the transition level analysis for the specified gaining category and shows which categories are targeted or avoided by the gaining category.
+</ResponseField>
+
+<ResponseField name="transition_lvlLoss_m" type="Transition object">
+  A `Transition` S4 class object containing the annualized rate of loss in *category m* (*Qtmj*) and the respective Uniform Intensity (*Vtm*).
+  
+  This represents the transition level analysis for the specified losing category and shows which categories target or avoid the losing category.
+</ResponseField>
+
+## Examples
+
+### Basic Usage
+
+```r
+# First, create a contingency table and customize the legend
+SL_2002_2014$tb_legend$categoryName <- factor(
+  c("Ap", "FF", "SA", "SG", "aa", "SF", "Agua", "Iu", "Ac", "R", "Im"),
+  levels = c("FF", "SF", "SA", "SG", "aa", "Ap", "Ac", "Im", "Iu", "Agua", "R")
+)
+
+# Add colors in the same order as the category values
+SL_2002_2014$tb_legend$color <- c(
+  "#FFE4B5", "#228B22", "#00FF00", "#CAFF70",
+  "#EE6363", "#00CD00", "#436EEE", "#FFAEB9",
+  "#FFA54F", "#68228B", "#636363"
+)
+
+# Perform intensity analysis
+result <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",  # Gaining category (Agriculture)
+  category_m = "SG",  # Losing category (Savanna)
+  area_km2 = TRUE
+)
+```
+
+### Using Pixel Counts Instead of Area
+
+```r
+# Perform analysis with pixel counts instead of km²
+result <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Urban",
+  category_m = "Forest",
+  area_km2 = FALSE
+)
+```
+
+### Accessing Results
+
+```r
+# View the interval level data
+result$interval_lvl
+
+# View category level gains
+result$category_lvlGain
+
+# View transition level data for gains
+result$transition_lvlGain_n
+```
+
+## References
+
+Aldwaik, S. Z. and Pontius, R. G. (2012) 'Intensity analysis to unify measurements of size and stationarity of land changes by interval, category, and transition', *Landscape and Urban Planning*. Elsevier B.V., 106(1), pp. 103–114. doi: [10.1016/j.landurbplan.2012.02.010](https://doi.org/10.1016/j.landurbplan.2012.02.010)
+
+Aldwaik, S. Z. and Pontius, R. G. (2013) 'Map errors that could account for deviations from a uniform intensity of land change', *International Journal of Geographical Information Science*. Taylor & Francis, 27(9), pp. 1717–1739. doi: [10.1080/13658816.2013.787618](https://doi.org/10.1080/13658816.2013.787618)
+
+## See Also
+
+- [contingencyTable](/api/contingency-table) - Create the input dataset for intensity analysis
+- [plot](/api/plot-methods) - Visualize intensity analysis results

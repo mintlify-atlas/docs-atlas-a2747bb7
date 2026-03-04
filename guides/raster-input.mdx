@@ -1,0 +1,227 @@
+---
+title: 'Preparing Raster Data'
+description: 'Learn how to prepare and load raster data for OpenLand analysis'
+---
+
+## Overview
+
+OpenLand accepts land use and cover (LUC) raster data in multiple formats. Proper data preparation is essential for successful intensity analysis and visualization.
+
+## Supported Input Formats
+
+OpenLand can load raster data from:
+
+- **RasterStack**: Multi-layer raster stack object
+- **RasterBrick**: Multi-layer raster brick object  
+- **RasterLayer**: Single raster layer (will be converted to stack)
+- **Directory path**: Path to folder containing `.tif` files
+- **List**: Named list of RasterLayer objects
+
+## Naming Conventions
+
+<Warning>
+**Critical**: Raster layers must follow the naming convention:
+
+`"some_text" + "_" + "year"`
+
+For example: `landscape_2002`, `landscape_2008`, `lulc_2014`
+</Warning>
+
+The year component is extracted from the layer name and used to:
+- Order time series chronologically
+- Calculate time intervals between observations
+- Label plots and analysis outputs
+
+## Loading Raster Data
+
+<Steps>
+
+### Load the OpenLand package
+
+```r
+library(OpenLand)
+```
+
+### Prepare your raster data
+
+OpenLand includes a sample dataset `SaoLourencoBasin` - a 5-layer RasterStack covering 2002, 2008, 2010, 2012, and 2014.
+
+```r
+# View the RasterStack structure
+SaoLourencoBasin
+
+# Output:
+# class      : RasterStack 
+# dimensions : rows, cols, cells, nlayers
+# resolution : 30, 30  (x, y)
+# extent     : xmin, xmax, ymin, ymax
+# crs        : +proj=utm +zone=21 +south +datum=WGS84
+# names      : landscape_2002, landscape_2008, landscape_2010, landscape_2012, landscape_2014
+```
+
+### Loading from different sources
+
+**From a RasterStack or RasterBrick:**
+```r
+# Already in memory - use directly
+data_table <- contingencyTable(input_raster = SaoLourencoBasin, 
+                               pixelresolution = 30)
+```
+
+**From a directory:**
+```r
+# Path to folder containing .tif files
+raster_path <- "/path/to/raster/directory"
+data_table <- contingencyTable(input_raster = raster_path,
+                               pixelresolution = 30)
+```
+
+**From a list of RasterLayers:**
+```r
+# Create a named list
+raster_list <- list(
+  landscape_2002 = raster("path/to/landscape_2002.tif"),
+  landscape_2008 = raster("path/to/landscape_2008.tif"),
+  landscape_2014 = raster("path/to/landscape_2014.tif")
+)
+
+data_table <- contingencyTable(input_raster = raster_list,
+                               pixelresolution = 30)
+```
+
+</Steps>
+
+## Raster Requirements
+
+### Spatial Consistency
+
+All rasters in the time series must have:
+
+✓ **Same extent**: Identical geographic boundaries  
+✓ **Same resolution**: Identical pixel size  
+✓ **Same projection**: Identical coordinate reference system  
+✓ **Same dimensions**: Same number of rows and columns
+
+### Checking Raster Consistency
+
+Use `summary_dir()` to verify raster parameters:
+
+```r
+# For a list of RasterLayers
+summary_dir(raster::unstack(SaoLourencoBasin))
+
+# For a directory path
+summary_dir("/path/to/raster/directory")
+```
+
+This returns a table showing:
+- `file_name`: Layer name
+- `xmin`, `xmax`, `ymin`, `ymax`: Extent boundaries
+- `res_x`, `res_y`: Pixel resolution
+- `nrow`, `ncol`: Grid dimensions
+- `min_val`, `max_val`: Category value ranges
+- `crs`: Coordinate reference system
+
+### Checking a Single Raster
+
+Use `summary_map()` to examine pixel counts by category:
+
+```r
+# Check the first layer
+summary_map(SaoLourencoBasin[[1]])
+
+# Returns:
+# # A tibble:
+#   pixvalue    Qt
+#      <dbl> <int>
+# 1        2  1234
+# 2        3  5678
+# 3        4  9012
+# ...
+```
+
+## Pixel Resolution
+
+The `pixelresolution` parameter specifies the pixel size in meters. This is used to convert pixel counts to area in km².
+
+```r
+# For 30m resolution pixels
+contingencyTable(input_raster = SaoLourencoBasin, pixelresolution = 30)
+
+# For 10m resolution pixels  
+contingencyTable(input_raster = my_rasters, pixelresolution = 10)
+```
+
+**Area calculation:** Area (km²) = (pixel count) × (resolution²) / 1,000,000
+
+For example, with 30m resolution:
+- 1 pixel = 30 × 30 = 900 m² = 0.0009 km²
+- 1000 pixels = 0.9 km²
+
+## Categorical Raster Values
+
+<Note>
+Raster pixels must contain **integer category codes**, not continuous values.
+
+For example:
+- ✓ `2` = Pasture
+- ✓ `3` = Forest  
+- ✓ `4` = Savannah
+- ✗ `1.5`, `2.73` = Invalid (continuous values)
+</Note>
+
+Category codes are typically values like 1, 2, 3, etc., representing different land cover classes (forest, water, urban, etc.).
+
+## Minimum Requirements
+
+<Warning>
+OpenLand requires **at least 2 time points** for analysis.
+
+With 2 time points, you can perform:
+- One-step transition analysis
+- Intensity analysis for a single interval
+
+With 3+ time points, you can perform:
+- Multi-step transition analysis
+- Time-series intensity analysis
+- Trend detection across intervals
+</Warning>
+
+## Example: Complete Data Loading Workflow
+
+```r
+library(OpenLand)
+
+# Option 1: Download sample dataset
+url <- "https://zenodo.org/record/3685230/files/SaoLourencoBasin.rda?download=1"
+temp <- tempfile()
+download.file(url, temp, mode = "wb")
+load(temp)
+
+# Option 2: Load your own rasters
+# my_rasters <- raster::stack("path/to/raster_folder")
+
+# Check raster properties
+summary_dir(raster::unstack(SaoLourencoBasin))
+
+# Verify first layer
+summary_map(SaoLourencoBasin[[1]])
+
+# Extract data for analysis
+SL_data <- contingencyTable(input_raster = SaoLourencoBasin, 
+                            pixelresolution = 30)
+
+# View the extracted data structure
+names(SL_data)
+# [1] "lulc_Multistep" "lulc_Onestep"   "tb_legend"      
+# [4] "totalArea"      "totalInterval"
+```
+
+## Next Steps
+
+After loading your raster data:
+
+1. [Edit the legend table](/guides/intensity-analysis-workflow#editing-the-legend) with meaningful category names and colors
+2. [Run intensity analysis](/guides/intensity-analysis-workflow) to quantify land use changes
+3. [Create visualizations](/guides/visualization) to explore transitions
+4. [Perform spatial analysis](/guides/spatial-analysis) to map change patterns

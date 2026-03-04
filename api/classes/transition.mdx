@@ -1,0 +1,169 @@
+---
+title: "Transition Class"
+description: "S4 class for Transition level results of Intensity Analysis"
+---
+
+## Description
+
+The `Transition` class is an S4 class that stores the results of Intensity Analysis at the **Transition level**. This is the third and most detailed level of intensity analysis, which examines how the size and intensity of a category's transitions vary across the other categories available for that transition.
+
+## Class Definition
+
+```r
+setClass(
+  Class = "Transition",
+  slots = c(
+    lookupcolor = "character",
+    transitionData = "tbl_df",
+    transitionStationarity = "tbl_df"
+  )
+)
+```
+
+## Slots
+
+<ParamField path="lookupcolor" type="named character vector">
+  The colors associated with the LUC legend items. Each element should be a color code (e.g., "#FFE4B5") with the category name as the name attribute.
+</ParamField>
+
+<ParamField path="transitionData" type="tibble (tbl_df)">
+  A table of Transition level results containing either:
+  - Gain of category *n*: R<sub>tin</sub> (transition intensity) and W<sub>tn</sub> (uniform transition intensity) values
+  - Loss of category *m*: Q<sub>tmj</sub> (transition intensity) and V<sub>tm</sub> (uniform transition intensity) values
+  
+  Must be a tibble with exactly 7 columns.
+</ParamField>
+
+<ParamField path="transitionStationarity" type="tibble (tbl_df)">
+  A table containing results of a stationarity test. A transition is considered stationary only if the intensities for all time intervals reside on one side of the uniform intensity.
+  
+  Must be a tibble with exactly 5 columns.
+</ParamField>
+
+## Slot Details
+
+### For Gain of Category n
+
+**transitionData** (7 columns):
+1. **Period** (`<fct>`): The period [Y<sub>t</sub>, Y<sub>t+1</sub>]
+2. **From** (`<fct>`): A category *i*
+3. **To** (`<fct>`): The gaining category in the transition of interest (*n*)
+4. **Interval** (`<int>`): Duration of the period [Y<sub>t</sub>, Y<sub>t+1</sub>]
+5. **T_i2n_km2** or **T_i2n_pixel** (`<dbl>`): Area with transition from category *i* to category *n* during time interval [Y<sub>t</sub>, Y<sub>t+1</sub>] where *i* ≠ *n*
+6. **Rtin** (`<dbl>`): Annual intensity of transition from category *i* to category *n* during time interval [Y<sub>t</sub>, Y<sub>t+1</sub>] where *i* ≠ *n*
+7. **Wtn** (`<dbl>`): Value of the uniform intensity of the transition to category *n* from all non-*n* categories at time Y<sub>t</sub> during time interval [Y<sub>t</sub>, Y<sub>t+1</sub>]
+
+**transitionStationarity** (5 columns):
+1. **From** (`<fct>`): The losing category in the transition of interest to category *n*
+2. **loss** (`<int>`): Number of times the category had losses to category *n*
+3. **N** (`<int>`): Total number of transitions to be considered as stationary (T)
+4. **Stationarity** (`<chr>`): *targeted by* or *avoided by* category *n*
+5. **Test** (`<chr>`): *Y* for stationarity detected and *N* when not
+
+### For Loss of Category m
+
+**transitionData** (7 columns):
+1. **Period** (`<fct>`): The period [Y<sub>t</sub>, Y<sub>t+1</sub>]
+2. **To** (`<fct>`): A category *j*
+3. **From** (`<fct>`): The losing category in the transition of interest (*m*)
+4. **Interval** (`<dbl>`): Duration of the period [Y<sub>t</sub>, Y<sub>t+1</sub>]
+5. **T_m2j_km2** or **T_m2j_pixel** (`<dbl>`): Area with transition from category *m* to category *j* during time interval [Y<sub>t</sub>, Y<sub>t+1</sub>] where *j* ≠ *m*
+6. **Qtmj** (`<dbl>`): Annual intensity of transition from category *m* to category *j* during time interval [Y<sub>t</sub>, Y<sub>t+1</sub>] where *j* ≠ *m*
+7. **Vtm** (`<dbl>`): Value of the uniform intensity of the transition from category *m* to all non-*m* categories at time Y<sub>t+1</sub> during time interval [Y<sub>t</sub>, Y<sub>t+1</sub>]
+
+**transitionStationarity** (5 columns):
+1. **To** (`<fct>`): The gaining category in the transition of interest from category *m*
+2. **gain** (`<int>`): Number of times the category had gains from category *m*
+3. **N** (`<int>`): Total number of transitions to be considered as stationary (T)
+4. **Stationarity** (`<chr>`): *targeted* or *avoided* category *m*
+5. **Test** (`<chr>`): *Y* for stationarity detected and *N* when not
+
+## Details
+
+### Transition Level Analysis
+
+The Transition level answers the questions:
+- **For gains**: "Which categories are contributing most intensively to the gain of category *n*?"
+- **For losses**: "Which categories are category *m* transitioning to most intensively?"
+
+#### Gain Analysis
+- **Rtin (Transition Intensity)**: Annual intensity of transition from category *i* to category *n*
+- **Wtn (Uniform Transition Intensity)**: Hypothetical intensity if all non-*n* categories contributed uniformly to *n*'s gain
+
+By comparing Rtin to Wtn:
+- If **Rtin > Wtn**: Category *n* is **targeting** category *i* (gaining intensively from *i*)
+- If **Rtin < Wtn**: Category *n* is **avoiding** category *i* (gaining less intensively from *i*)
+
+#### Loss Analysis
+- **Qtmj (Transition Intensity)**: Annual intensity of transition from category *m* to category *j*
+- **Vtm (Uniform Transition Intensity)**: Hypothetical intensity if category *m* transitioned uniformly to all non-*m* categories
+
+By comparing Qtmj to Vtm:
+- If **Qtmj > Vtm**: Category *m* is **targeting** category *j* (transitioning intensively to *j*)
+- If **Qtmj < Vtm**: Category *m* is **avoiding** category *j* (transitioning less intensively to *j*)
+
+### Stationarity Testing
+
+The stationarity test determines whether transition patterns are consistent across time:
+- **Targeted by/Targeted**: Intensities are consistently above the uniform rate
+- **Avoided by/Avoided**: Intensities are consistently below the uniform rate
+- **Test = Y**: The pattern is stationary (consistent across all intervals)
+- **Test = N**: The pattern is not stationary (varies across intervals)
+
+## Usage in Intensity Analysis
+
+The `Transition` objects are created by the `intensityAnalysis()` function:
+
+```r
+# Run intensity analysis
+my_test <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",  # Target category for gain analysis
+  category_m = "SG"   # Target category for loss analysis
+)
+
+# Access the Transition level results
+gain_transitions <- my_test$transition_lvlGain_n  # Transitions TO category "Ap"
+loss_transitions <- my_test$transition_lvlLoss_m  # Transitions FROM category "SG"
+
+# View the gain transitions
+gain_transitions
+#> An object of class "Transition"
+#> Slot "lookupcolor":
+#>        Ap        FF        SA        SG        aa        SF      Agua        Iu 
+#> "#FFE4B5" "#228B22" "#00FF00" "#CAFF70" "#EE6363" "#00CD00" "#436EEE" "#FFAEB9" 
+#> ...
+#> 
+#> Slot "transitionData":
+#> # A tibble: 40 × 7
+#>    Period    From  To    Interval T_i2n_km2  Rtin   Wtn
+#>    <fct>     <fct> <fct>    <int>     <dbl> <dbl> <dbl>
+#>  1 2012-2014 SG    Ap           2    350.    4.82  3.92
+#>  2 2012-2014 aa    Ap           2     85.2   5.98  3.92
+#>  3 2012-2014 SA    Ap           2     45.3   2.15  3.92
+#> ...
+```
+
+## Plotting
+
+The `Transition` class has a dedicated plot method:
+
+```r
+plot(my_test$transition_lvlGain_n,
+     labels = c(leftlabel = bquote("Gain of Ap (" ~km^2~ ")"),
+                rightlabel = "Intensity Gain of Ap (%)"),
+     marginplot = c(.3, .3),
+     labs = c("Categories", "Uniform intensity"),
+     leg_curv = c(x = 1, y = .5))
+```
+
+This generates a dual-axis visualization showing:
+- The area of transition from each category to the target category
+- The intensity of each transition compared to the uniform intensity
+
+## See Also
+
+- [`Interval`](/api/classes/interval) - S4 class for Interval level analysis
+- [`Category`](/api/classes/category) - S4 class for Category level analysis
+- `intensityAnalysis()` - Function that creates Transition objects
+- `plot()` - Method for visualizing Transition objects

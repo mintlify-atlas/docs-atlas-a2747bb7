@@ -1,0 +1,494 @@
+---
+title: 'Spatial Analysis'
+description: 'Map accumulated changes and perform spatial screening of land use transitions'
+---
+
+## Overview
+
+Beyond tabular and visual summaries, OpenLand provides spatial analysis functions to map where and how frequently land use changes occur across the landscape.
+
+## Available Functions
+
+- **acc_changes()**: Map accumulated changes (how many times each pixel changed)
+- **summary_map()**: Summarize pixel counts by category for a single raster
+- **summary_dir()**: Check consistency across multiple rasters in a directory
+
+## Accumulated Changes
+
+The `acc_changes()` function calculates how many times each pixel changed during the analyzed period, revealing spatial patterns of change frequency.
+
+### How It Works
+
+<Steps>
+
+### Compare consecutive time steps
+
+For each pair of consecutive rasters, the function identifies pixels that changed category.
+
+### Count total changes per pixel
+
+It sums the number of transitions for each pixel across all intervals.
+
+### Return raster and summary
+
+Outputs:
+1. A **RasterLayer** with change counts as pixel values
+2. A **table** with percentage of area for each change frequency
+
+</Steps>
+
+### Basic Usage
+
+```r
+library(OpenLand)
+
+# Calculate accumulated changes
+acc_result <- acc_changes(SaoLourencoBasin)
+
+# Returns a list with 2 elements:
+# [[1]] - RasterLayer with change counts
+# [[2]] - Summary table
+```
+
+### Understanding the Output
+
+**Raster layer (element 1):**
+```r
+acc_raster <- acc_result[[1]]
+
+# Pixel values represent number of changes:
+# 0 = No change (stable throughout period)
+# 1 = Changed once
+# 2 = Changed twice
+# 3 = Changed three times
+# etc.
+```
+
+**Summary table (element 2):**
+```r
+acc_table <- acc_result[[2]]
+acc_table
+
+# A tibble:
+#   PxValue    Qt Percent
+#     <int> <int>   <dbl>
+# 1       0 45000   89.5
+# 2       1  4500    8.9
+# 3       2   750    1.5
+# 4       3    50    0.1
+```
+
+**Interpretation:**
+- 89.5% of pixels never changed (value = 0)
+- 8.9% changed once
+- 1.5% changed twice (high turnover areas)
+- 0.1% changed three times (very dynamic areas)
+
+### Input Formats
+
+The function accepts multiple input types:
+
+```r
+# From RasterStack
+acc_changes(SaoLourencoBasin)
+
+# From RasterBrick
+my_brick <- raster::brick("path/to/rasters.tif")
+acc_changes(my_brick)
+
+# From directory path
+acc_changes("/path/to/raster/folder")
+
+# From list of RasterLayers
+raster_list <- list(
+  landscape_2002 = raster("layer1.tif"),
+  landscape_2008 = raster("layer2.tif"),
+  landscape_2014 = raster("layer3.tif")
+)
+acc_changes(raster_list)
+```
+
+<Warning>
+The `acc_changes()` function requires **at least 2 rasters**. With n rasters, you get n-1 change detection intervals.
+
+For example:
+- 2 rasters → 1 interval → pixel values: 0 or 1
+- 5 rasters → 4 intervals → pixel values: 0, 1, 2, 3, or 4
+</Warning>
+
+## Visualizing Accumulated Changes with tmap
+
+OpenLand integrates with the **tmap** package for creating publication-quality maps.
+
+### Complete Mapping Workflow
+
+<Steps>
+
+### Calculate accumulated changes
+
+```r
+library(OpenLand)
+library(tmap)
+
+acc_result <- acc_changes(SaoLourencoBasin)
+acc_raster <- acc_result[[1]]
+acc_table <- acc_result[[2]]
+```
+
+### Create the map
+
+```r
+# Set maximum raster size for plotting
+tmap_options(max.raster = c(plot = 41711112, view = 41711112))
+
+# Build the map
+acc_map <- tm_shape(acc_raster) +
+  tm_raster(
+    style = "cat",  # Categorical style
+    labels = c(
+      paste0(acc_table$PxValue[1], " Change", 
+             " (", round(acc_table$Percent[1], 2), "%)"),
+      paste0(acc_table$PxValue[2], " Change", 
+             " (", round(acc_table$Percent[2], 2), "%)"),
+      paste0(acc_table$PxValue[3], " Changes", 
+             " (", round(acc_table$Percent[3], 2), "%)")  
+    ),
+    palette = c("#757575", "#FFD700", "#CD0000"),  # Gray, Gold, Red
+    title = "Changes in the interval\n2002 - 2014"
+  ) +
+  tm_legend(
+    position = c(0.01, 0.2),
+    legend.title.size = 1.2,
+    legend.title.fontface = "bold",
+    legend.text.size = 0.8
+  ) +
+  tm_compass(
+    type = "arrow",
+    position = c("right", "top"),
+    size = 3
+  ) +
+  tm_scale_bar(
+    breaks = c(seq(0, 40, 10)),
+    position = c(0.76, 0.001),
+    text.size = 0.6
+  ) +
+  tm_graticules(
+    n.x = 6,
+    n.y = 6,
+    lines = FALSE,
+    labels.rot = c(0, 90)
+  ) +
+  tm_layout(inner.margins = c(0.02, 0.02, 0.02, 0.02))
+
+# Display the map
+acc_map
+```
+
+### Save the map
+
+```r
+# Save as PNG
+tmap_save(acc_map,
+          filename = "accumulated_changes.png",
+          width = 7,
+          height = 7,
+          dpi = 300)
+
+# Save as PDF
+tmap_save(acc_map,
+          filename = "accumulated_changes.pdf",
+          width = 7,
+          height = 7)
+```
+
+</Steps>
+
+### Customizing the Map
+
+**Color palettes:**
+```r
+# Sequential palette (low to high intensity)
+palette = c("#F0F0F0", "#BDBDBD", "#636363")  # Gray scale
+
+# Diverging palette  
+palette = c("#2166AC", "#F7F7F7", "#B2182B")  # Blue-White-Red
+
+# Custom colors
+palette = c("#757575", "#FFD700", "#CD0000")  # Gray-Gold-Red
+```
+
+**Legend customization:**
+```r
+tm_legend(
+  position = c(0.01, 0.2),      # x, y position (0-1 scale)
+  legend.title.size = 1.2,      # Title font size
+  legend.title.fontface = "bold",
+  legend.text.size = 0.8,       # Label font size
+  legend.width = 0.5,           # Legend width
+  legend.height = 0.6           # Legend height  
+)
+```
+
+**Adding contextual elements:**
+```r
+# Study area boundaries
+tm_shape(boundary_polygon) +
+  tm_borders(col = "black", lwd = 2) +
+
+# Roads or rivers
+tm_shape(roads_sf) +
+  tm_lines(col = "gray30", lwd = 1.5) +
+
+# Cities or sampling points
+tm_shape(cities_sf) +
+  tm_dots(size = 0.5, col = "red")
+```
+
+## Summary Functions for Raster Checking
+
+### summary_map() - Single Raster Summary
+
+Get pixel counts by category for a single raster layer:
+
+```r
+# Check the first time point
+summary_map(SaoLourencoBasin[[1]])
+
+# A tibble:
+#   pixvalue    Qt
+#      <dbl> <int>
+# 1        2 12543  # Category 2: 12,543 pixels
+# 2        3 45678  # Category 3: 45,678 pixels  
+# 3        4  8901  # Category 4: 8,901 pixels
+# ...
+```
+
+**Use cases:**
+- Verify category presence
+- Check for unexpected pixel values
+- Calculate category areas before running analysis
+- Quality control after reclassification
+
+**From file path:**
+```r
+summary_map("/path/to/raster.tif")
+```
+
+**From RasterStack (first layer only):**
+```r
+summary_map(SaoLourencoBasin)  # Analyzes only [[1]]
+```
+
+### summary_dir() - Multi-Raster Consistency Check
+
+Check consistency of spatial parameters across all rasters:
+
+```r
+# From RasterStack
+summary_dir(raster::unstack(SaoLourencoBasin))
+
+# From directory path
+summary_dir("/path/to/raster/folder")
+```
+
+**Output table:**
+```r
+# A tibble:
+#   file_name      xmin    xmax    ymin    ymax res_x res_y nrow ncol min_val max_val crs
+#   <chr>         <dbl>   <dbl>   <dbl>   <dbl> <dbl> <dbl> <int> <int>   <dbl>   <dbl> <chr>
+# 1 landscape_20… 50000  550000 8100000 8600000    30    30  1667  1667       2      13 +proj=utm...
+# 2 landscape_20… 50000  550000 8100000 8600000    30    30  1667  1667       2      13 +proj=utm...
+# 3 landscape_20… 50000  550000 8100000 8600000    30    30  1667  1667       2      13 +proj=utm...
+```
+
+**Columns explained:**
+- `file_name`: Raster layer name
+- `xmin`, `xmax`, `ymin`, `ymax`: Extent boundaries
+- `res_x`, `res_y`: Pixel resolution
+- `nrow`, `ncol`: Grid dimensions  
+- `min_val`, `max_val`: Category value range
+- `crs`: Coordinate reference system
+
+**What to check:**
+
+✓ All rows should have **identical** extent values  
+✓ All rows should have **identical** resolution  
+✓ All rows should have **identical** dimensions  
+✓ All rows should have **identical** CRS  
+✗ Category values (`min_val`, `max_val`) can differ (land use changes over time)
+
+<Warning>
+If `summary_dir()` shows inconsistent parameters, you must resample/reproject your rasters before analysis. Use:
+
+```r
+# Resample to match reference
+raster::resample(x, reference_raster, method = "ngb")
+
+# Reproject
+raster::projectRaster(x, crs = target_crs, method = "ngb")
+```
+
+Always use `method = "ngb"` (nearest neighbor) for categorical rasters.
+</Warning>
+
+## Spatial Analysis Workflow Example
+
+<Steps>
+
+### Load and verify data
+
+```r
+library(OpenLand)
+library(tmap)
+
+# Check raster consistency
+summary_dir(raster::unstack(SaoLourencoBasin))
+
+# Verify first layer
+summary_map(SaoLourencoBasin[[1]])
+```
+
+### Calculate accumulated changes
+
+```r
+acc_result <- acc_changes(SaoLourencoBasin)
+acc_raster <- acc_result[[1]]
+acc_table <- acc_result[[2]]
+
+# View summary statistics
+print(acc_table)
+```
+
+### Create the map
+
+```r
+# Build map with tmap
+acc_map <- tm_shape(acc_raster) +
+  tm_raster(
+    style = "cat",
+    labels = paste0(acc_table$PxValue, " change",
+                   ifelse(acc_table$PxValue != 1, "s", ""),
+                   " (", round(acc_table$Percent, 1), "%)"),
+    palette = c("#757575", "#FFD700", "#CD0000", "#8B0000"),
+    title = "Accumulated Changes"
+  ) +
+  tm_legend(position = c(0.02, 0.25)) +
+  tm_compass(position = c("right", "top")) +
+  tm_scale_bar(position = c("left", "bottom")) +
+  tm_graticules()
+
+acc_map
+```
+
+### Analyze spatial patterns
+
+```r
+# Extract high-change areas (changed 2+ times)
+high_change <- acc_raster >= 2
+
+# Calculate percentage of high-change pixels
+total_pixels <- sum(!is.na(raster::values(acc_raster)))
+high_change_pixels <- sum(raster::values(high_change), na.rm = TRUE)
+percent_high_change <- (high_change_pixels / total_pixels) * 100
+
+cat("High-change areas:", round(percent_high_change, 2), "%\n")
+
+# Save high-change mask
+raster::writeRaster(high_change, "high_change_mask.tif")
+```
+
+### Export results
+
+```r
+# Save map
+tmap_save(acc_map, "accumulated_changes_map.png", 
+          width = 10, height = 8, dpi = 300)
+
+# Save raster
+raster::writeRaster(acc_raster, "accumulated_changes.tif", 
+                   overwrite = TRUE)
+
+# Save summary table
+write.csv(acc_table, "change_frequency_summary.csv", 
+          row.names = FALSE)
+```
+
+</Steps>
+
+## Integration with Other Analysis
+
+### Combining Spatial and Intensity Analysis
+
+```r
+# 1. Run intensity analysis
+SL_data <- contingencyTable(input_raster = SaoLourencoBasin,
+                            pixelresolution = 30)
+
+my_intensity <- intensityAnalysis(
+  dataset = SL_data,
+  category_n = "Ap",
+  category_m = "SG"
+)
+
+# 2. Calculate accumulated changes
+acc_result <- acc_changes(SaoLourencoBasin)
+
+# 3. Create comprehensive report
+# - Intensity plots show WHAT changed and WHEN
+# - Accumulated change map shows WHERE changes are concentrated
+```
+
+### Masking by Change Frequency
+
+```r
+# Focus analysis on stable areas (0 changes)
+stable_mask <- acc_result[[1]] == 0
+
+# Or focus on dynamic areas (1+ changes)
+dynamic_mask <- acc_result[[1]] >= 1
+
+# Apply mask to original rasters
+SL_stable <- raster::mask(SaoLourencoBasin, stable_mask, 
+                          maskvalue = 0)
+```
+
+## Tips for Spatial Analysis
+
+<Tip>
+**Performance with large rasters:**
+- Use `raster::beginCluster()` and `raster::endCluster()` for parallel processing
+- Consider tiling very large study areas
+- Use `maxpixels` parameter in plotting functions to reduce rendering time
+</Tip>
+
+<Tip>
+**Interpreting change frequency:**
+- 0 changes = persistent category (stable)
+- 1 change = directional transition (A → B)
+- 2+ changes = cyclical or complex dynamics (A → B → C or A → B → A)
+- High-frequency areas often indicate:
+  - Ecotones or transition zones
+  - Areas with classification uncertainty
+  - Human-modified landscapes (agriculture, forestry)
+</Tip>
+
+<Tip>
+**Publication-quality maps:**
+- Use consistent color schemes across all maps
+- Include scale bar, north arrow, and coordinates
+- Add informative titles and legends
+- Export at 300 dpi or higher for print
+- Consider colorblind-friendly palettes
+</Tip>
+
+## Next Steps
+
+- Learn about [intensity analysis](/guides/intensity-analysis-workflow) to quantify change patterns
+- Explore [visualization tools](/guides/visualization) for creating transition diagrams
+- Review [raster input requirements](/guides/raster-input) for data preparation
+
+## References
+
+For tmap documentation and advanced mapping techniques, see:
+- [tmap GitHub repository](https://github.com/r-tmap/tmap)
+- [tmap: get started!](https://r-tmap.github.io/tmap/articles/tmap-getstarted.html)

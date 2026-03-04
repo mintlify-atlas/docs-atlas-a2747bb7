@@ -1,0 +1,174 @@
+---
+title: "Category Class"
+description: "S4 class for Category level results of Intensity Analysis"
+---
+
+## Description
+
+The `Category` class is an S4 class that stores the results of Intensity Analysis at the **Category level**. This is the second level of intensity analysis, which examines how the size and intensity of gross losses and gross gains in each category vary across categories for each time interval.
+
+## Class Definition
+
+```r
+setClass(
+  Class = "Category",
+  slots = c(
+    lookupcolor = "character",
+    categoryData = "tbl_df",
+    categoryStationarity = "tbl_df"
+  )
+)
+```
+
+## Slots
+
+<ParamField path="lookupcolor" type="named character vector">
+  The colors associated with the LUC legend items. Each element should be a color code (e.g., "#FFE4B5") with the category name as the name attribute.
+</ParamField>
+
+<ParamField path="categoryData" type="tibble (tbl_df)">
+  A table of Category level results containing either gain (G<sub>tj</sub>) or loss (L<sub>ti</sub>) values.
+  
+  Must be a tibble with exactly 6 columns (format depends on whether analyzing Gain or Loss).
+</ParamField>
+
+<ParamField path="categoryStationarity" type="tibble (tbl_df)">
+  A table containing results of a stationarity test. A change is considered stationary only if the intensities for all time intervals reside on one side of the uniform intensity.
+  
+  Must be a tibble with exactly 5 columns.
+</ParamField>
+
+## Slot Details
+
+### For Gain Analysis
+
+**categoryData** (6 columns):
+1. **Period** (`<fct>`): The period [Y<sub>t</sub>, Y<sub>t+1</sub>]
+2. **To** (`<fct>`): A LUC category *j*
+3. **Interval** (`<int>`): Duration of the period [Y<sub>t</sub>, Y<sub>t+1</sub>] in years
+4. **GG_km2** or **GG_pixel** (`<dbl>` or `<int>`): Area of gross gain of category *j* during [Y<sub>t</sub>, Y<sub>t+1</sub>]
+5. **Gtj** (`<dbl>`): Annual intensity of gross gain of category *j* for time interval [Y<sub>t</sub>, Y<sub>t+1</sub>]
+6. **St** (`<dbl>`): Annual intensity of change for time interval [Y<sub>t</sub>, Y<sub>t+1</sub>]
+
+**categoryStationarity** (5 columns):
+1. **To** (`<fct>`): A category of interest *j*
+2. **gain** (`<int>`): Number of times a category had gains during all time intervals [Y<sub>1</sub>, Y<sub>T</sub>]
+3. **N** (`<int>`): Total number of evaluated time points (T)
+4. **Stationarity** (`<chr>`): *Active Gain* or *Dormant Gain*
+5. **Test** (`<chr>`): *Y* if stationarity was detected and *N* if not
+
+### For Loss Analysis
+
+**categoryData** (6 columns):
+1. **Period** (`<fct>`): The period [Y<sub>t</sub>, Y<sub>t+1</sub>]
+2. **From** (`<fct>`): A LUC category *i*
+3. **Interval** (`<int>`): Duration of the period [Y<sub>t</sub>, Y<sub>t+1</sub>] in years
+4. **GL_km2** or **GL_pixel** (`<dbl>` or `<int>`): Area of gross loss of category *i* during [Y<sub>t</sub>, Y<sub>t+1</sub>]
+5. **Lti** (`<dbl>`): Annual intensity of gross loss of category *i* for time interval [Y<sub>t</sub>, Y<sub>t+1</sub>]
+6. **St** (`<dbl>`): Annual intensity of change for time interval [Y<sub>t</sub>, Y<sub>t+1</sub>]
+
+**categoryStationarity** (5 columns):
+1. **From** (`<fct>`): A category of interest *i*
+2. **loss** (`<int>`): Number of times a category had losses during all time intervals [Y<sub>1</sub>, Y<sub>T</sub>]
+3. **N** (`<int>`): Total number of evaluated time points (T)
+4. **Stationarity** (`<chr>`): *Active Loss* or *Dormant Loss*
+5. **Test** (`<chr>`): *Y* if stationarity was detected and *N* if not
+
+## Example Object
+
+Here's an example of a `Category` object for gain analysis from the São Lourenço Basin dataset:
+
+```r
+my_test <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",
+  category_m = "SG"
+)
+
+my_test$category_lvlGain
+#> An object of class "Category"
+#> Slot "lookupcolor":
+#>        Ap        FF        SA        SG        aa        SF      Agua        Iu 
+#> "#FFE4B5" "#228B22" "#00FF00" "#CAFF70" "#EE6363" "#00CD00" "#436EEE" "#FFAEB9" 
+#>        Ac         R        Im 
+#> "#FFA54F" "#68228B" "#636363" 
+#> 
+#> Slot "categoryData":
+#> # A tibble: 23 × 6
+#> # Groups:   Period, To [23]
+#>    Period    To    Interval  GG_km2   Gtj    St
+#>    <fct>     <fct>    <int>   <dbl> <dbl> <dbl>
+#>  1 2012-2014 aa           2  14.9   0.510  1.66
+#>  2 2012-2014 Ap           2 612.    3.92   1.66
+#>  3 2012-2014 Ac           2 110.    1.14   1.66
+#>  4 2012-2014 Im           2   0.195 0.337  1.66
+#>  5 2012-2014 Iu           2   6.79  2.67   1.66
+#>  6 2010-2012 aa           2  47.0   1.18   2.12
+#>  7 2010-2012 Ap           2 707.    4.84   2.12
+#>  8 2010-2012 Ac           2 189.    2.00   2.12
+#>  9 2010-2012 Iu           2   1.90  0.792  2.12
+#> 10 2010-2012 R            2   2.76  0.951  2.12
+#> # ℹ 13 more rows
+#> 
+#> Slot "categoryStationarity":
+#> # A tibble: 12 × 5
+#>    To     Gain     N Stationarity Test 
+#>    <fct> <int> <int> <chr>        <chr>
+#>  1 aa        2     4 Active Gain  N    
+#>  2 Ap        2     4 Active Gain  N    
+#>  3 Ac        1     4 Active Gain  N    
+#>  4 Iu        2     4 Active Gain  N    
+#>  5 Agua      1     4 Active Gain  N    
+#>  6 R         2     4 Active Gain  N    
+#>  7 aa        2     4 Dormant Gain N    
+#>  8 Ap        2     4 Dormant Gain N    
+#>  9 Ac        3     4 Dormant Gain N    
+#> 10 Im        3     4 Dormant Gain N    
+#> 11 Iu        2     4 Dormant Gain N    
+#> 12 R         1     4 Dormant Gain N
+```
+
+## Details
+
+### Category Level Analysis
+
+The Category level answers the question: **"Which categories are experiencing intensive gains or losses?"**
+
+- **Gtj (Gain Intensity)**: Annual intensity of gross gain for category *j*
+- **Lti (Loss Intensity)**: Annual intensity of gross loss for category *i*
+- **St (Annual Intensity)**: Overall annual intensity of change for the time interval
+
+By comparing Gtj or Lti to St:
+- If **Gtj > St**: Category *j* is gaining more intensively than the overall rate
+- If **Lti > St**: Category *i* is losing more intensively than the overall rate
+
+### Stationarity Testing
+
+The stationarity test determines whether a category's behavior is consistent across time:
+- **Active Gain/Loss**: Intensities are consistently above the uniform rate
+- **Dormant Gain/Loss**: Intensities are consistently below the uniform rate
+- **Test = Y**: The pattern is stationary (consistent across all intervals)
+- **Test = N**: The pattern is not stationary (varies across intervals)
+
+## Plotting
+
+The `Category` class has a dedicated plot method:
+
+```r
+plot(my_test$category_lvlGain,
+     labels = c(leftlabel = bquote("Gain Area (" ~km^2~ ")"),
+                rightlabel = "Intensity Gain (%)"),
+     marginplot = c(.3, .3),
+     labs = c("Categories", "Uniform intensity"),
+     leg_curv = c(x = 1, y = .5),
+     fontsize_ui = 8)
+```
+
+This generates a dual-axis visualization showing both the area of change and the intensity of change for each category.
+
+## See Also
+
+- [`Interval`](/api/classes/interval) - S4 class for Interval level analysis
+- [`Transition`](/api/classes/transition) - S4 class for Transition level analysis
+- `intensityAnalysis()` - Function that creates Category objects
+- `plot()` - Method for visualizing Category objects

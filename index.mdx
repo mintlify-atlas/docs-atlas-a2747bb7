@@ -1,97 +1,178 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "OpenLand Documentation"
+mode: "custom"
 ---
 
-## Setting up
+<div className="relative overflow-hidden bg-gradient-to-br from-[#228B22] via-[#2F9A2F] to-[#006400] dark:from-[#1a6b1a] dark:via-[#228B22] dark:to-[#0d4d0d] py-20">
+  <div className="max-w-6xl mx-auto px-6 lg:px-8">
+    <div className="grid lg:grid-cols-12 gap-8 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-5xl lg:text-6xl font-bold text-white mb-6">
+          Quantitative Analysis of Land Use Change
+        </h1>
+        <p className="text-xl text-white/90 max-w-2xl mb-8">
+          OpenLand is an R package for analyzing and visualizing land use and land cover (LUCC) time series using intensity analysis, interactive diagrams, and spatial mapping.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <a 
+            href="/quickstart" 
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-[#228B22] font-semibold hover:bg-gray-100 transition-colors no-underline"
+          >
+            Get Started
+            <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          <a 
+            href="/api/intensity-analysis" 
+            className="inline-flex items-center px-6 py-3 rounded-lg border-2 border-white/30 bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors no-underline"
+          >
+            API Reference
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="relative">
+          <div className="absolute inset-0 bg-white/10 rounded-2xl blur-3xl"></div>
+          <div className="relative bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
+            <div className="text-white/80 text-sm font-mono">
+              <div className="text-[#90EE90]"># Install OpenLand</div>
+              <div className="mt-2">install.packages(<span className="text-[#90EE90]">"OpenLand"</span>)</div>
+              <div className="mt-4 text-[#90EE90]"># Load the package</div>
+              <div className="mt-2">library(OpenLand)</div>
+              <div className="mt-4 text-[#90EE90]"># Analyze land use change</div>
+              <div className="mt-2">results &lt;- intensityAnalysis(</div>
+              <div className="ml-4">dataset = SL_2002_2014</div>
+              <div>)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Quick Start</h2>
+  <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">Get up and running with OpenLand in minutes</p>
+  
+  <Steps>
+    <Step title="Install OpenLand from CRAN">
+      Install the package using R's built-in package manager:
+      
+      ```r
+      install.packages("OpenLand")
+      ```
+      
+      Or install the development version from GitHub:
+      
+      ```r
+      devtools::install_github("reginalexavier/OpenLand")
+      ```
+    </Step>
+    
+    <Step title="Prepare your raster data">
+      Load your land use/land cover raster time series. Rasters must be named with the format `name_year` (e.g., `landscape_2020`):
+      
+      ```r
+      library(OpenLand)
+      library(raster)
+      
+      # Load your raster stack
+      my_rasters <- stack("path/to/rasters/")
+      ```
+    </Step>
+    
+    <Step title="Generate contingency tables">
+      Extract land use transitions from your raster time series:
+      
+      ```r
+      # Create contingency tables
+      ct <- contingencyTable(
+        input_raster = my_rasters,
+        pixelresolution = 30
+      )
+      ```
+    </Step>
+    
+    <Step title="Run intensity analysis">
+      Perform three-level intensity analysis to understand change patterns:
+      
+      ```r
+      # Perform intensity analysis
+      intensity <- intensityAnalysis(
+        dataset = ct,
+        category_n = "Forest",
+        category_m = "Agriculture"
+      )
+      
+      # Plot the results
+      plot(intensity$category_lvlGain)
+      ```
+    </Step>
+  </Steps>
+</div>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Key Features</h2>
+  <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">Everything you need for land use change analysis</p>
+  
+  <CardGroup cols={2}>
+    <Card title="Intensity Analysis" icon="chart-line" href="/concepts/intensity-analysis">
+      Three-level framework analyzing interval, category, and transition patterns following Aldwaik & Pontius (2012)
+    </Card>
+    <Card title="Interactive Visualizations" icon="chart-network" href="/guides/visualization">
+      Create Sankey diagrams, chord diagrams, and net/gross change plots to communicate findings
+    </Card>
+    <Card title="Spatial Mapping" icon="map" href="/guides/spatial-analysis">
+      Map accumulated changes and transition frequencies across your study area
+    </Card>
+    <Card title="Flexible Time Series" icon="clock" href="/concepts/data-preparation">
+      Support for regular and irregular time intervals with multiple raster formats
+    </Card>
+  </CardGroup>
+</div>
 
-## Make it yours
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Explore the Documentation</h2>
+  <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">Dive deep into OpenLand's capabilities</p>
+  
+  <CardGroup cols={3}>
+    <Card title="Core Concepts" icon="lightbulb" href="/concepts/intensity-analysis">
+      Understand the methodology behind intensity analysis and contingency tables
+    </Card>
+    <Card title="Guides" icon="book-open" href="/guides/raster-input">
+      Step-by-step tutorials for common workflows and analysis patterns
+    </Card>
+    <Card title="Examples" icon="flask" href="/examples/sao-lourenco-basin">
+      Real-world case studies including the São Lourenço Basin dataset
+    </Card>
+    <Card title="API Reference" icon="code" href="/api/contingency-table">
+      Complete function reference with parameters and return values
+    </Card>
+    <Card title="Visualization Tools" icon="palette" href="/api/sankey-land">
+      Explore all plotting functions for creating publication-ready figures
+    </Card>
+    <Card title="S4 Classes" icon="cube" href="/api/classes/category">
+      Understand OpenLand's object-oriented structure for analysis outputs
+    </Card>
+  </CardGroup>
+</div>
 
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<div className="mt-20 mb-16 max-w-5xl mx-auto px-6">
+  <div className="bg-gradient-to-r from-[#228B22]/10 to-[#006400]/10 dark:from-[#228B22]/20 dark:to-[#006400]/20 border border-[#228B22]/20 dark:border-[#228B22]/30 rounded-2xl p-8 lg:p-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Ready to analyze land use change?</h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 mb-6 max-w-2xl">
+      Start exploring your land cover time series with OpenLand's powerful analysis tools and visualization capabilities.
+    </p>
+    <a 
+      href="/quickstart" 
+      className="inline-flex items-center px-6 py-3 rounded-lg bg-[#228B22] text-white font-semibold hover:bg-[#006400] transition-colors no-underline"
+    >
+      Get Started Now
+      <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+      </svg>
+    </a>
+  </div>
+</div>

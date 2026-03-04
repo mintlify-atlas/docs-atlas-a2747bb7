@@ -1,0 +1,116 @@
+---
+title: Introduction
+description: Overview of OpenLand - Quantitative Analysis and Visualization of Land Use and Cover Change
+---
+
+## What is OpenLand?
+
+OpenLand is an open-source R package for quantitative analysis and visualization of land use and cover (LUC) time series. It provides comprehensive tools for analyzing spatiotemporal patterns of land change, with a focus on Intensity Analysis - a rigorous framework for understanding how, when, and where land use changes occur.
+
+<Note>
+OpenLand implements the complete Intensity Analysis methodology described by Aldwaik and Pontius (2012), providing standardized multilevel output graphics and rigorous statistical testing.
+</Note>
+
+## Key Features
+
+OpenLand offers a comprehensive suite of tools for land use and cover change analysis:
+
+### Data Management
+- **Consistency checking** for spatiotemporal raster data (extent, projection, resolution, categories)
+- **Flexible data loading** supporting RasterStack, RasterBrick, or directory paths
+- **Cross-tabulation** of multi-temporal LUC maps for regular or irregular time intervals
+
+### Intensity Analysis
+- **Three-level analysis framework**:
+  - **Interval level**: Examines how size and speed of change vary across time intervals
+  - **Category level**: Analyzes gross gains and losses for each LUC category
+  - **Transition level**: Evaluates how specific categories transition to others
+- **Stationarity testing** at each analysis level to detect temporal patterns
+- **S4 class implementation** for object-oriented plotting and analysis
+
+### Visualization Tools
+- **Standardized intensity plots** for all three analysis levels
+- **Sankey diagrams** for one-step and multi-step transitions
+- **Chord diagrams** showing circular flow of land use transitions
+- **Bar charts** for net/gross changes and temporal evolution
+- **Spatial change maps** showing accumulated changes over time
+
+### Analysis Capabilities
+- **Change frequency mapping** (`acc_changes()`) - identifies pixels by number of transitions
+- **Summary functions** for raster consistency checking
+- **Customizable color schemes** and category naming
+- **Area calculations** in both km² and pixel counts
+
+## Use Cases
+
+OpenLand is designed for researchers and practitioners working with land use and cover change data:
+
+<CardGroup cols={2}>
+  <Card title="Environmental Monitoring" icon="tree">
+    Track deforestation, habitat loss, and ecosystem changes across protected areas and conservation zones.
+  </Card>
+  
+  <Card title="Agricultural Expansion" icon="wheat">
+    Analyze patterns of agricultural intensification, pasture expansion, and crop conversion in rural landscapes.
+  </Card>
+  
+  <Card title="Urban Growth" icon="city">
+    Study urbanization patterns, suburban sprawl, and land consumption in metropolitan regions.
+  </Card>
+  
+  <Card title="Wetland Dynamics" icon="water">
+    Monitor seasonal and long-term changes in wetland extent, including flood pulse dynamics in river basins.
+  </Card>
+</CardGroup>
+
+### Research Applications
+
+- **Temporal pattern detection**: Identify periods of rapid vs. slow change
+- **Category-specific analysis**: Determine which land uses are actively gaining or losing area
+- **Transition pathways**: Understand the dominant conversion patterns (e.g., forest → pasture)
+- **Policy evaluation**: Assess land use changes before and after policy interventions
+- **Climate impact studies**: Analyze land cover responses to climate variability
+
+## The Intensity Analysis Framework
+
+Intensity Analysis is a quantitative method that uses cross-tabulation matrices to evaluate deviations between observed change intensity and hypothesized uniform change intensity. Each level provides increasingly detailed information:
+
+<Steps>
+  <Step title="Interval Level">
+    Determines whether change is concentrated in certain time periods or distributed uniformly across the study period.
+  </Step>
+  
+  <Step title="Category Level">
+    Identifies which land use categories are experiencing active vs. dormant gain or loss relative to uniform intensity.
+  </Step>
+  
+  <Step title="Transition Level">
+    Reveals which specific transitions (e.g., forest → agriculture) are targeted vs. avoided by gaining or losing categories.
+  </Step>
+</Steps>
+
+## Publication and Citation
+
+OpenLand is described in detail in:
+
+**Reginal Exavier and Peter Zeilhofer (2021).** "OpenLand: Software for Quantitative Analysis and Visualization of Land Use and Cover Change." *The R Journal*, v. 12, n. 2, p. 359–371. [https://doi.org/10.32614/RJ-2021-021](https://journal.r-project.org/archive/2020/RJ-2021-021/index.html)
+
+<Warning>
+When using OpenLand in your research, please cite the above publication to support continued development of the package.
+</Warning>
+
+## Next Steps
+
+Ready to get started with OpenLand?
+
+<Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+  Follow a complete working example using the São Lourenço Basin dataset to learn the core OpenLand workflow.
+</Card>
+
+## System Requirements
+
+- **R version**: 3.4.0 or higher
+- **Key dependencies**: dplyr, tidyr, ggplot2, raster, circlize, networkD3
+- **Optional**: tmap (for spatial visualization)
+
+See the [Installation](/installation) page for detailed setup instructions.

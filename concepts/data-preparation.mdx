@@ -1,0 +1,414 @@
+---
+title: Data Preparation
+description: Requirements and best practices for preparing raster data for OpenLand analysis
+---
+
+## Overview
+
+Before analyzing land use and cover (LUC) changes with OpenLand, your raster data must meet specific format and naming requirements. This guide covers the essential steps for preparing your data.
+
+---
+
+## Raster Naming Requirements
+
+OpenLand requires rasters to follow a strict naming convention to extract temporal information:
+
+### Format: `name_year`
+
+Each raster layer must be named with:
+- A descriptive text prefix (can be any text)
+- An underscore separator `_`
+- A four-digit year
+
+### Valid Examples
+
+```r
+# Good naming examples
+"landscape_2020"
+"SaoLourenco_2002"
+"basin_2008"
+"study_area_2014"
+```
+
+### Invalid Examples
+
+```r
+# Bad naming examples - will cause errors
+"landscape2020"      # Missing underscore
+"2020_landscape"     # Year in wrong position
+"landscape_20"       # Year not 4 digits
+"landscape-2020"     # Wrong separator
+```
+
+<Info>
+The `contingencyTable()` function extracts years from raster names by splitting on the underscore character and parsing the last component as the year.
+</Info>
+
+---
+
+## Supported Raster Formats
+
+OpenLand accepts raster data in three different input formats:
+
+### 1. RasterBrick
+
+A multi-layer raster object where all layers share the same extent and resolution:
+
+```r
+library(raster)
+library(OpenLand)
+
+# Load a RasterBrick
+my_brick <- brick("path/to/multilayer_raster.tif")
+
+# Check layer names (must follow name_year format)
+names(my_brick)
+# [1] "landscape_2002" "landscape_2008" "landscape_2014"
+
+# Create contingency table
+results <- contingencyTable(
+  input_raster = my_brick,
+  pixelresolution = 30
+)
+```
+
+### 2. RasterStack
+
+A collection of raster layers that can come from different files:
+
+```r
+library(raster)
+library(OpenLand)
+
+# Create a RasterStack from individual rasters
+raster_2002 <- raster("landscape_2002.tif")
+raster_2008 <- raster("landscape_2008.tif")
+raster_2014 <- raster("landscape_2014.tif")
+
+my_stack <- stack(raster_2002, raster_2008, raster_2014)
+
+# Verify names
+names(my_stack)
+# [1] "landscape_2002" "landscape_2008" "landscape_2014"
+
+# Create contingency table
+results <- contingencyTable(
+  input_raster = my_stack,
+  pixelresolution = 30
+)
+```
+
+### 3. Folder Path
+
+Provide a path to a directory containing raster files:
+
+```r
+library(OpenLand)
+
+# All rasters in the folder must follow naming convention
+results <- contingencyTable(
+  input_raster = "path/to/raster/folder",
+  pixelresolution = 30
+)
+```
+
+<Note>
+When using a folder path, all raster files in the directory will be loaded. Ensure only your LUC time series rasters are present in the folder and that they all follow the `name_year` naming convention.
+</Note>
+
+---
+
+## Pixel Resolution Considerations
+
+### Specifying Resolution
+
+The `pixelresolution` parameter in `contingencyTable()` must be specified in **meters**:
+
+```r
+# For 30-meter resolution (e.g., Landsat)
+contingencyTable(
+  input_raster = my_rasters,
+  pixelresolution = 30
+)
+
+# For 10-meter resolution (e.g., Sentinel-2)
+contingencyTable(
+  input_raster = my_rasters,
+  pixelresolution = 10
+)
+
+# For 250-meter resolution (e.g., MODIS)
+contingencyTable(
+  input_raster = my_rasters,
+  pixelresolution = 250
+)
+```
+
+### Why Resolution Matters
+
+Pixel resolution is used to convert pixel counts to area measurements in km²:
+
+```r
+# Internal calculation in OpenLand
+km2 = QtPixel * (pixelresolution^2) / 1e+06
+```
+
+<Info>
+Accurate pixel resolution is critical for:
+- Converting pixel counts to real-world area (km²)
+- Calculating change intensities
+- Interpreting analysis results correctly
+</Info>
+
+### Data Consistency Requirements
+
+All rasters in your time series must have:
+- **Same extent** - Identical geographic boundaries
+- **Same resolution** - Identical pixel size
+- **Same projection** - Identical coordinate reference system
+- **Same categories** - Consistent land use classification scheme
+
+```r
+# Use OpenLand's built-in functions to check consistency
+
+# Check a single raster
+summary_map(raster_layer)
+
+# Check all rasters in a directory
+summary_dir("path/to/raster/folder")
+```
+
+<Accordion title="What summary_dir() Returns">
+The `summary_dir()` function lists for each raster:
+- Spatial extension (bounding box)
+- Spatial resolution (cell size)
+- Cartographic projection (CRS)
+- Category range (unique pixel values)
+
+Use this to verify consistency across your time series before running the analysis.
+</Accordion>
+
+---
+
+## Time Interval Handling
+
+OpenLand automatically calculates time intervals from raster names and supports both regular and irregular intervals.
+
+### Regular Intervals
+
+Time series with consistent spacing between observations:
+
+```r
+# Example: Regular 2-year intervals
+names(my_stack)
+# [1] "landscape_2010" "landscape_2012" "landscape_2014" "landscape_2016"
+
+# Intervals: 2, 2, 2 years
+```
+
+### Irregular Intervals
+
+Time series with varying spacing between observations:
+
+```r
+# Example: Irregular intervals
+names(my_stack)
+# [1] "landscape_2002" "landscape_2008" "landscape_2010" 
+# [4] "landscape_2012" "landscape_2014"
+
+# Intervals: 6, 2, 2, 2 years
+```
+
+### How Intervals Are Calculated
+
+OpenLand automatically computes intervals for each transition:
+
+```r
+# The interval is stored in the contingency table
+results <- contingencyTable(
+  input_raster = my_stack,
+  pixelresolution = 30
+)
+
+# View intervals
+results$lulc_Multistep %>%
+  select(Period, Interval, yearFrom, yearTo) %>%
+  distinct()
+
+# Example output:
+#   Period      Interval yearFrom yearTo
+#   <chr>          <int>    <int>  <int>
+# 1 2002-2008          6     2002   2008
+# 2 2008-2010          2     2008   2010
+# 3 2010-2012          2     2010   2012
+# 4 2012-2014          2     2012   2014
+```
+
+### Total Interval
+
+The total interval spans from the first to the last year:
+
+```r
+# Access total interval
+results$totalInterval
+# [1] 12  # (2014 - 2002)
+```
+
+<Note>
+Intensity Analysis properly accounts for irregular intervals by computing **annualized intensities**. This means you can analyze time series with varying temporal spacing without data manipulation.
+</Note>
+
+---
+
+## Complete Data Preparation Workflow
+
+Here's a recommended workflow for preparing your data:
+
+### Step 1: Organize Your Rasters
+
+```r
+# Ensure consistent naming
+# landscape_2002.tif
+# landscape_2008.tif
+# landscape_2010.tif
+# landscape_2012.tif
+# landscape_2014.tif
+```
+
+### Step 2: Verify Consistency
+
+```r
+library(OpenLand)
+
+# Check all rasters in directory
+summary_dir("path/to/rasters")
+
+# Verify:
+# - All have same extent
+# - All have same resolution
+# - All have same projection
+# - All use same classification scheme
+```
+
+### Step 3: Load as RasterStack
+
+```r
+library(raster)
+
+# Load individual rasters
+r2002 <- raster("landscape_2002.tif")
+r2008 <- raster("landscape_2008.tif")
+r2010 <- raster("landscape_2010.tif")
+r2012 <- raster("landscape_2012.tif")
+r2014 <- raster("landscape_2014.tif")
+
+# Create stack
+my_stack <- stack(r2002, r2008, r2010, r2012, r2014)
+
+# Verify names extracted correctly
+names(my_stack)
+```
+
+### Step 4: Create Contingency Table
+
+```r
+# Extract transitions
+results <- contingencyTable(
+  input_raster = my_stack,
+  pixelresolution = 30  # Adjust to your data
+)
+
+# Inspect results
+names(results)
+# [1] "lulc_Multistep" "lulc_Onestep"   "tb_legend"     
+# [4] "totalArea"      "totalInterval"
+```
+
+### Step 5: Edit Legend
+
+```r
+# Replace auto-generated names with meaningful categories
+results$tb_legend$categoryName <- factor(
+  c("Forest", "Pasture", "Agriculture", "Urban", "Water"),
+  levels = c("Forest", "Pasture", "Agriculture", "Urban", "Water")
+)
+
+# Assign appropriate colors
+results$tb_legend$color <- c(
+  "#228B22",  # Forest - dark green
+  "#FFE4B5",  # Pasture - tan
+  "#FFA54F",  # Agriculture - orange
+  "#636363",  # Urban - gray
+  "#436EEE"   # Water - blue
+)
+
+# Verify legend
+results$tb_legend
+```
+
+---
+
+## Common Issues and Solutions
+
+<Accordion title="Error: Raster names don't contain years">
+**Problem**: Rasters aren't named in `name_year` format.
+
+**Solution**: Rename your rasters to include an underscore followed by a 4-digit year:
+
+```r
+# Rename files before loading
+file.rename("landscape1.tif", "landscape_2002.tif")
+file.rename("landscape2.tif", "landscape_2008.tif")
+
+# Or set names after loading
+my_stack <- stack("landscape1.tif", "landscape2.tif")
+names(my_stack) <- c("landscape_2002", "landscape_2008")
+```
+</Accordion>
+
+<Accordion title="Error: Rasters have different extents or resolutions">
+**Problem**: Input rasters aren't spatially aligned.
+
+**Solution**: Reproject and resample rasters to match:
+
+```r
+library(raster)
+
+# Use first raster as reference
+reference <- raster("landscape_2002.tif")
+
+# Resample others to match
+r2008_aligned <- projectRaster(
+  from = raster("landscape_2008.tif"),
+  to = reference,
+  method = "ngb"  # Use nearest neighbor for categorical data
+)
+```
+</Accordion>
+
+<Accordion title="Need at least 2 rasters error">
+**Problem**: Only one raster provided.
+
+**Solution**: OpenLand requires at least two time points to analyze change. Ensure you have a minimum of two rasters in your time series.
+</Accordion>
+
+---
+
+## Best Practices
+
+1. **Use descriptive prefixes**: Choose a raster name prefix that clearly identifies your study area
+   ```r
+   "SaoLourenco_2002" is better than "data_2002"
+   ```
+
+2. **Keep consistent intervals when possible**: While irregular intervals are supported, regular intervals simplify interpretation
+
+3. **Document your pixel resolution**: Keep a record of the sensor/source and native resolution of your data
+
+4. **Validate category consistency**: Ensure the same land use classification scheme is applied across all years
+
+5. **Use meaningful category codes**: Assign consistent numeric codes to land use categories across all rasters
+
+6. **Back up original data**: Always work with copies of your raster data
+
+7. **Test with a subset first**: If working with large rasters, test your workflow on a small spatial subset before processing the full dataset

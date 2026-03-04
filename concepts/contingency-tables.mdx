@@ -1,0 +1,540 @@
+---
+title: Contingency Tables
+description: Understanding contingency table structure and content in OpenLand
+---
+
+## Overview
+
+Contingency tables are the foundation of OpenLand's analysis framework. The `contingencyTable()` function extracts land use and cover (LUC) transitions from raster time series and organizes them into cross-tabulation matrices that serve as input for intensity analysis and visualization functions.
+
+---
+
+## What Contingency Tables Contain
+
+A contingency table (also called a cross-tabulation matrix) summarizes the transitions between land use categories from one time point to another. Each cell in the matrix represents the area (in km² or pixel count) that transitioned from category *i* to category *j*.
+
+### Basic Structure
+
+```r
+# Example of what a contingency table represents:
+#
+#           To: Forest  To: Pasture  To: Urban
+# From: Forest     800          150         50
+# From: Pasture    100          600        100
+# From: Urban        5           20        125
+```
+
+In this example:
+- 800 km² remained as Forest (diagonal = persistence)
+- 150 km² changed from Forest to Pasture (off-diagonal = transition)
+- 50 km² changed from Forest to Urban
+
+<Info>
+**Key Insight**: Diagonal values represent **persistence** (no change), while off-diagonal values represent **transitions** (actual changes between categories).
+</Info>
+
+---
+
+## The `contingencyTable()` Function
+
+The `contingencyTable()` function is the entry point for OpenLand analysis. It processes raster time series and returns a structured list of data objects.
+
+### Basic Usage
+
+```r
+library(OpenLand)
+
+# Create contingency table from raster time series
+results <- contingencyTable(
+  input_raster = SaoLourencoBasin,  # RasterStack, RasterBrick, or folder path
+  pixelresolution = 30               # Pixel size in meters
+)
+
+# View the structure
+names(results)
+# [1] "lulc_Multistep" "lulc_Onestep"   "tb_legend"     
+# [4] "totalArea"      "totalInterval"
+```
+
+### Return Value
+
+The function returns a **list with 5 objects**:
+
+1. `lulc_Multistep` - Transitions for all consecutive time steps
+2. `lulc_Onestep` - Transitions from first to last year only
+3. `tb_legend` - Category names and colors
+4. `totalArea` - Study area size
+5. `totalInterval` - Total time span in years
+
+---
+
+## lulc_Multistep vs lulc_Onestep
+
+OpenLand generates two types of contingency tables to support different analytical perspectives.
+
+### lulc_Multistep
+
+Captures **all consecutive transitions** in the time series. This table tracks how land use evolves through each time step.
+
+```r
+# Example: Time series with 5 years (2002, 2008, 2010, 2012, 2014)
+# Creates 4 transition matrices:
+# - 2002 → 2008
+# - 2008 → 2010
+# - 2010 → 2012
+# - 2012 → 2014
+
+results$lulc_Multistep
+```
+
+**Use cases:**
+- Intensity Analysis (requires step-by-step transitions)
+- Tracking temporal dynamics across multiple intervals
+- Identifying when specific transitions occurred
+- Analyzing trends over time
+
+### lulc_Onestep
+
+Captures **only the net change** from the first year to the last year, ignoring intermediate states.
+
+```r
+# Example: Time series (2002, 2008, 2010, 2012, 2014)
+# Creates 1 transition matrix:
+# - 2002 → 2014
+
+results$lulc_Onestep
+```
+
+**Use cases:**
+- Sankey diagrams showing direct transitions
+- Chord diagrams for overall period
+- Net change analysis
+- Simplified visualization of long-term change
+
+<Accordion title="Why Both Tables Matter">
+**Multistep** captures the full trajectory of change. A pixel might transition: Forest → Pasture → Agriculture → Urban. The multistep table preserves this pathway.
+
+**Onestep** shows only the net result: Forest → Urban. Intermediate transitions are hidden, but you get a clearer picture of the ultimate transformation.
+
+Example:
+```r
+# Multistep reveals:
+Forest (2002) → Pasture (2008) → Agriculture (2014)
+
+# Onestep shows:
+Forest (2002) → Agriculture (2014)
+```
+
+Both perspectives are valuable depending on your research question.
+</Accordion>
+
+---
+
+## Table Structure and Fields
+
+### Column Descriptions
+
+Both `lulc_Multistep` and `lulc_Onestep` contain the same 8 columns:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| **Period** | `chr` | Time interval in format "yearFrom-yearTo" (e.g., "2002-2008") |
+| **From** | `int` | Numeric code of the source category *i* at time *t* |
+| **To** | `int` | Numeric code of the destination category *j* at time *t+1* |
+| **km2** | `dbl` | Area in square kilometers that transitioned from *i* to *j* |
+| **QtPixel** | `int` | Number of pixels that transitioned from *i* to *j* |
+| **Interval** | `int` | Number of years between *t* and *t+1* |
+| **yearFrom** | `int` | Starting year of the transition |
+| **yearTo** | `int` | Ending year of the transition |
+
+### Example Table
+
+```r
+results$lulc_Multistep
+
+# A tibble: 440 × 8
+#   Period    From    To   km2 QtPixel Interval yearFrom yearTo
+#   <chr>    <int> <int> <dbl>   <int>    <int>    <int>  <int>
+# 1 2002-2008    2     2  5892  654667        6     2002   2008
+# 2 2002-2008    2     3    45    5000        6     2002   2008
+# 3 2002-2008    2    11    12    1333        6     2002   2008
+# 4 2002-2008    3     2    89    9889        6     2002   2008
+# 5 2002-2008    3     3  8234  914889        6     2002   2008
+```
+
+<Note>
+**Important**: The `From` and `To` columns initially contain numeric category codes. After running `intensityAnalysis()`, these are replaced with meaningful category names from the legend table.
+</Note>
+
+---
+
+## The Legend Table (tb_legend)
+
+The legend table maps numeric pixel values to descriptive category names and display colors.
+
+### Initial State
+
+When first created, the legend contains auto-generated values:
+
+```r
+results$tb_legend
+
+#   categoryValue categoryName color
+# 1             2          ABC #002F70
+# 2             3          XYZ #0A468D
+# 3             4          DEF #295EAE
+# 4             5          GHI #4A76C7
+```
+
+- **categoryValue**: Numeric code from the raster
+- **categoryName**: Random 3-letter code (must be edited)
+- **color**: Random color from a predefined palette (must be edited)
+
+### Why Edit the Legend?
+
+The auto-generated names and colors are placeholders. You **must** edit them to:
+- Provide meaningful category labels for plots and tables
+- Apply appropriate colors that reflect land use types
+- Control the display order in visualizations
+
+---
+
+## How to Edit Legend Tables
+
+### Step 1: Define Category Names
+
+Replace auto-generated names with meaningful labels:
+
+```r
+# Define categories with proper names
+results$tb_legend$categoryName <- factor(
+  c("Ap", "FF", "SA", "SG", "aa", "SF", "Agua", "Iu", "Ac", "R", "Im"),
+  levels = c("FF", "SF", "SA", "SG", "aa", "Ap", "Ac", "Im", "Iu", "Agua", "R")
+)
+```
+
+<Info>
+**Important**: 
+- Names must be in the **same order** as `categoryValue`
+- Use `levels` to control the order in plots (top to bottom, left to right)
+- The `levels` order determines legend and plot display order
+</Info>
+
+### Step 2: Assign Colors
+
+Provide colors that visually represent each land use type:
+
+```r
+# Assign colors (must be in same order as categoryValue)
+results$tb_legend$color <- c(
+  "#FFE4B5",  # Ap - Pasture (tan)
+  "#228B22",  # FF - Forest (dark green)
+  "#00FF00",  # SA - Park Savannah (bright green)
+  "#CAFF70",  # SG - Gramineous Savannah (light green)
+  "#EE6363",  # aa - Anthropized Vegetation (red)
+  "#00CD00",  # SF - Wooded Savannah (medium green)
+  "#436EEE",  # Agua - Water (blue)
+  "#FFAEB9",  # Iu - Urban (pink)
+  "#FFA54F",  # Ac - Agriculture (orange)
+  "#68228B",  # R - Reforestation (purple)
+  "#636363"   # Im - Mining (gray)
+)
+```
+
+### Color Specification Options
+
+```r
+# Method 1: Hexadecimal values
+color <- "#228B22"
+
+# Method 2: Named colors
+color <- "forestgreen"
+
+# Method 3: RGB values
+color <- rgb(34, 139, 34, maxColorValue = 255)
+```
+
+### Complete Example
+
+```r
+library(OpenLand)
+
+# Step 1: Create contingency table
+SL_2002_2014 <- contingencyTable(
+  input_raster = SaoLourencoBasin,
+  pixelresolution = 30
+)
+
+# Step 2: View auto-generated legend
+SL_2002_2014$tb_legend
+
+# Step 3: Edit category names
+SL_2002_2014$tb_legend$categoryName <- factor(
+  c("Pasture", "Forest", "Park Savannah", "Gramineous Savannah", 
+    "Anthropized", "Wooded Savannah", "Water", "Urban", 
+    "Agriculture", "Reforestation", "Mining"),
+  levels = c("Forest", "Wooded Savannah", "Park Savannah", 
+             "Gramineous Savannah", "Anthropized", "Pasture", 
+             "Agriculture", "Mining", "Urban", "Water", "Reforestation")
+)
+
+# Step 4: Assign colors
+SL_2002_2014$tb_legend$color <- c(
+  "#FFE4B5", "#228B22", "#00FF00", "#CAFF70", "#EE6363", "#00CD00",
+  "#436EEE", "#FFAEB9", "#FFA54F", "#68228B", "#636363"
+)
+
+# Step 5: Verify the legend
+SL_2002_2014$tb_legend
+```
+
+<Accordion title="Understanding Factor Levels">
+The `levels` parameter in `factor()` controls display order in plots:
+
+```r
+# Default: alphabetical order
+factor(c("Urban", "Forest", "Water"))
+# Levels: Forest Urban Water
+
+# Custom: specify your preferred order
+factor(
+  c("Urban", "Forest", "Water"),
+  levels = c("Forest", "Water", "Urban")
+)
+# Levels: Forest Water Urban
+```
+
+This affects:
+- Legend order in plots
+- Bar chart category sequence
+- Sankey and chord diagram arrangement
+</Accordion>
+
+---
+
+## Additional Table Components
+
+### totalArea
+
+Stores the size of the study area:
+
+```r
+results$totalArea
+
+# A tibble: 1 × 2
+#   area_km2 QtPixel
+#      <dbl>   <dbl>
+# 1   22368. 24853760
+```
+
+- **area_km2**: Total area in square kilometers
+- **QtPixel**: Total number of pixels
+
+### totalInterval
+
+Stores the total time span:
+
+```r
+results$totalInterval
+# [1] 12  # years from 2002 to 2014
+```
+
+This is calculated as: `yearTo (last) - yearFrom (first)`
+
+---
+
+## Using Contingency Tables
+
+### For Intensity Analysis
+
+```r
+# Contingency table is required input for intensity analysis
+my_analysis <- intensityAnalysis(
+  dataset = results,  # Output from contingencyTable()
+  category_n = "Pasture",
+  category_m = "Forest"
+)
+```
+
+### For Visualizations
+
+```r
+# Net and gross change plot
+netgrossplot(
+  dataset = results$lulc_Multistep,
+  legendtable = results$tb_legend,
+  xlab = "LUC Category",
+  ylab = bquote("Area (" ~ km^2 ~ ")")
+)
+
+# Chord diagram (onestep)
+chordDiagramLand(
+  dataset = results$lulc_Onestep,
+  legendtable = results$tb_legend
+)
+
+# Sankey diagram (multistep)
+sankeyLand(
+  dataset = results$lulc_Multistep,
+  legendtable = results$tb_legend
+)
+
+# Bar plot of land use evolution
+barplotLand(
+  dataset = results$lulc_Multistep,
+  legendtable = results$tb_legend,
+  xlab = "Year",
+  ylab = bquote("Area (" ~ km^2 ~ ")"),
+  area_km2 = TRUE
+)
+```
+
+---
+
+## Accessing and Filtering Table Data
+
+### View Specific Periods
+
+```r
+library(dplyr)
+
+# Filter transitions for a specific period
+results$lulc_Multistep %>%
+  filter(Period == "2002-2008")
+
+# View only actual changes (exclude persistence)
+results$lulc_Multistep %>%
+  filter(From != To)
+
+# Find transitions to a specific category
+results$lulc_Multistep %>%
+  filter(To == 2)  # Category 2
+```
+
+### Calculate Summary Statistics
+
+```r
+# Total change area per period
+results$lulc_Multistep %>%
+  filter(From != To) %>%
+  group_by(Period) %>%
+  summarise(total_change_km2 = sum(km2))
+
+# Gains for a specific category
+results$lulc_Multistep %>%
+  filter(From != To, To == 2) %>%
+  group_by(Period) %>%
+  summarise(gains_km2 = sum(km2))
+
+# Losses for a specific category
+results$lulc_Multistep %>%
+  filter(From != To, From == 2) %>%
+  group_by(Period) %>%
+  summarise(losses_km2 = sum(km2))
+```
+
+<Note>
+**Tip**: Use `dplyr` verbs like `filter()`, `group_by()`, and `summarise()` to explore patterns in your contingency tables before running formal analyses.
+</Note>
+
+---
+
+## Best Practices
+
+1. **Always edit the legend** before creating visualizations or running intensity analysis
+   ```r
+   # Bad: Using auto-generated legend
+   plot(results)  # Shows "ABC", "XYZ" labels
+   
+   # Good: Using meaningful legend
+   results$tb_legend$categoryName <- factor(...)
+   results$tb_legend$color <- c(...)
+   plot(results)  # Shows "Forest", "Pasture" labels
+   ```
+
+2. **Choose colors carefully** to represent land use types intuitively
+   - Green shades for vegetation
+   - Blue for water
+   - Gray for urban/built-up
+   - Brown/tan for agricultural uses
+
+3. **Order legend levels logically** for better visualization
+   - Natural → Anthropic
+   - Forest → Savannah → Grassland → Agriculture
+
+4. **Verify category consistency** across time steps
+   ```r
+   # Check that all years have the same categories
+   unique(results$lulc_Multistep$From)
+   unique(results$lulc_Multistep$To)
+   ```
+
+5. **Document your legend** for reproducibility
+   ```r
+   # Save legend definition for future reference
+   write.csv(results$tb_legend, "legend_definition.csv")
+   ```
+
+---
+
+## Common Tasks
+
+<Accordion title="Export contingency table to CSV">
+```r
+# Export multistep table
+write.csv(
+  results$lulc_Multistep, 
+  "transitions_multistep.csv", 
+  row.names = FALSE
+)
+
+# Export onestep table
+write.csv(
+  results$lulc_Onestep,
+  "transitions_onestep.csv",
+  row.names = FALSE
+)
+```
+</Accordion>
+
+<Accordion title="Merge legend names into transition table">
+```r
+library(dplyr)
+
+# Join legend to add category names
+table_with_names <- results$lulc_Multistep %>%
+  left_join(
+    results$tb_legend %>% select(categoryValue, categoryName),
+    by = c("From" = "categoryValue")
+  ) %>%
+  rename(FromName = categoryName) %>%
+  left_join(
+    results$tb_legend %>% select(categoryValue, categoryName),
+    by = c("To" = "categoryValue")
+  ) %>%
+  rename(ToName = categoryName)
+
+head(table_with_names)
+```
+</Accordion>
+
+<Accordion title="Calculate net change by category">
+```r
+library(dplyr)
+
+# Net change = Gains - Losses
+net_change <- results$lulc_Multistep %>%
+  filter(From != To) %>%
+  group_by(Period) %>%
+  summarise(
+    # Gains
+    gains_forest = sum(km2[To == 3]),
+    # Losses
+    losses_forest = sum(km2[From == 3]),
+    # Net
+    net_forest = gains_forest - losses_forest
+  )
+
+net_change
+```
+</Accordion>

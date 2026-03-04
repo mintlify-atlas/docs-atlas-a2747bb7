@@ -1,0 +1,116 @@
+---
+title: contingencyTable
+description: Extract land use and cover transitions for all input grids of a time series
+---
+
+## Function Signature
+
+```r
+contingencyTable(input_raster, pixelresolution = 30)
+```
+
+## Description
+
+Extracts LUC (Land Use and Cover) transitions for all input grids of the time series. This function creates cross-tabulation matrices that show how land categories transition from one time period to another.
+
+## Parameters
+
+<ParamField path="input_raster" type="character | Raster* object | list">
+  Path (character), Raster* object or list of Raster* objects. See `raster::raster()` for more information about supported file types.
+</ParamField>
+
+<ParamField path="pixelresolution" type="numeric" default="30">
+  The pixel spatial resolution in meters. Used to calculate area in square kilometers from pixel counts.
+</ParamField>
+
+## Return Value
+
+Returns a list containing 5 objects:
+
+<ResponseField name="lulc_Multistep" type="tibble">
+  Contingency table for all analysed time steps, containing 8 columns:
+  
+  - **Period** (`<chr>`): The period [Yt, Yt+1]
+  - **From** (`<dbl>`): Numerical code of a LUC category *i*
+  - **To** (`<dbl>`): Numerical code of a LUC category *j*
+  - **km2** (`<dbl>`): Area in square kilometers that transited from category *i* to category *j* in the period from *Yt* to *Yt+1*
+  - **Interval** (`<dbl>`): Interval of years between the first and last year of the period [Yt, Yt+1]
+  - **QtPixel** (`<int>`): Pixel count that transited from category *i* to category *j* in the period from *Yt* to *Yt+1*
+  - **yearFrom** (`<chr>`): The year that the change comes from [Yt]
+  - **yearTo** (`<chr>`): The year that the change goes to [Yt+1]
+</ResponseField>
+
+<ResponseField name="lulc_Onestep" type="tibble">
+  Contingency table for the entire analysed period [Y1, YT], containing 8 columns identical to `lulc_Multistep`.
+</ResponseField>
+
+<ResponseField name="tb_legend" type="tibble">
+  A table of the pixel values, names, and colors containing 3 columns:
+  
+  - **categoryValue** (`<dbl>`): The pixel value of the LUC category
+  - **categoryName** (`<factor>`): Randomly created string associated with a given pixel value of a LUC category
+  - **color** (`<chr>`): Random color associated with the given pixel value of a LUC category
+  
+  <Note>
+    Before further analysis, you should customize the `categoryName` and `color` values:
+    
+    **Category Names:** Names must be in the same order as `categoryValue`, and levels should be ordered correctly for legend plotting:
+    ```r
+    myobject$tb_legend$categoryName <- factor(
+      c("name1", "name2", "name3", "name4"),
+      levels = c("name3", "name2", "name1", "name4")
+    )
+    ```
+    
+    **Colors:** Colors must be in the same order as values in `categoryValue`. Use color names (e.g., "black") or HEX values (e.g., "#FFFFFF"):
+    ```r
+    myobject$tb_legend$color <- c("#CDB79E", "red", "#66CD00", "yellow")
+    ```
+  </Note>
+</ResponseField>
+
+<ResponseField name="totalArea" type="tibble">
+  A table with the total area of the study area containing 2 columns:
+  
+  - **area_km2** (`<numeric>`): The total area in square kilometers
+  - **QtPixel** (`<numeric>`): The total area in pixel counts
+</ResponseField>
+
+<ResponseField name="totalInterval" type="numeric">
+  Total interval of the analysed time series in years.
+</ResponseField>
+
+## Examples
+
+### Basic Usage
+
+```r
+# Download sample dataset
+url <- "https://zenodo.org/record/3685230/files/SaoLourencoBasin.rda?download=1"
+temp <- tempfile()
+download.file(url, temp, mode = "wb")
+load(temp)
+
+# Create contingency table with 30m pixel resolution
+result <- contingencyTable(
+  input_raster = SaoLourencoBasin, 
+  pixelresolution = 30
+)
+```
+
+### Customizing Legend
+
+```r
+# After creating the contingency table, customize category names and colors
+result$tb_legend$categoryName <- factor(
+  c("Forest", "Agriculture", "Urban", "Water"),
+  levels = c("Forest", "Agriculture", "Urban", "Water")
+)
+
+result$tb_legend$color <- c("#228B22", "#FFE4B5", "#636363", "#436EEE")
+```
+
+## See Also
+
+- [intensityAnalysis](/api/intensity-analysis) - Perform intensity analysis on contingency table results
+- [plot](/api/plot-methods) - Visualize intensity analysis results

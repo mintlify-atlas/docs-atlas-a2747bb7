@@ -1,0 +1,82 @@
+---
+title: "summary_dir"
+description: "Summary of multiple parameters in a raster directory"
+---
+
+## Description
+
+Listing major characteristics of raster inputs. Those characteristics include dimensions, resolution, extent, value ranges (min, max), and the coordinate reference system. This function provides directory-based summaries for quality control and metadata extraction.
+
+## Usage
+
+```r
+summary_dir(path)
+```
+
+## Arguments
+
+<ParamField path="path" type="character or list">
+  The path for the Raster* directory or list of Raster* to be analysed. Can be:
+  - A character path to a directory containing `.tif` files
+  - A list of RasterLayer objects
+</ParamField>
+
+## Value
+
+Returns a tibble with the following columns for each raster:
+
+- `file_name`: Name of the raster file or layer
+- `xmin`: Minimum x coordinate (western edge)
+- `xmax`: Maximum x coordinate (eastern edge)
+- `ymin`: Minimum y coordinate (southern edge)
+- `ymax`: Maximum y coordinate (northern edge)
+- `res_x`: Resolution in x direction
+- `res_y`: Resolution in y direction
+- `nrow`: Number of rows
+- `ncol`: Number of columns
+- `min_val`: Minimum pixel value
+- `max_val`: Maximum pixel value
+- `crs`: Coordinate reference system (CRS) as character string
+
+## Details
+
+This function is essential for:
+- **Quality Control**: Verify that all rasters in a time series have consistent properties
+- **Metadata Extraction**: Document the characteristics of your spatial datasets
+- **Preprocessing Checks**: Ensure rasters are properly aligned before analysis
+- **Data Documentation**: Generate summary tables for reports and publications
+
+The function automatically handles two input types:
+1. **Directory path**: Searches for all `.tif` files in the specified directory
+2. **List of RasterLayers**: Processes a pre-loaded list of raster objects
+
+<Warning>
+  All rasters in a time series analysis should have identical extent, resolution, and CRS. Use this function to verify consistency before running intensity analysis or other temporal analyses.
+</Warning>
+
+## Examples
+
+```r
+# Download the SaoLourencoBasin dataset
+url <- "https://zenodo.org/record/3685230/files/SaoLourencoBasin.rda?download=1"
+temp <- tempfile()
+download.file(url, temp, mode = "wb")
+load(temp)
+
+# Summarize all layers in the stack
+raster_summary <- summary_dir(raster::unstack(SaoLourencoBasin))
+print(raster_summary)
+
+# Example output:
+# # A tibble: 5 × 12
+#   file_name  xmin  xmax  ymin  ymax res_x res_y  nrow  ncol min_val max_val crs
+#   <chr>     <dbl> <dbl> <dbl> <dbl> <dbl> <dbl> <int> <int>   <dbl>   <dbl> <chr>
+# 1 SLB_2002  -56.8 -55.2 -17.8 -16.5 0.001 0.001  1300  1600       1      11 +proj=longlat...
+# 2 SLB_2008  -56.8 -55.2 -17.8 -16.5 0.001 0.001  1300  1600       1      11 +proj=longlat...
+# ...
+```
+
+## See Also
+
+- [`summary_map()`](/api/summary-map) - Quantitative summary of pixel values for a single raster
+- [`acc_changes()`](/api/acc-changes) - Calculate accumulated changes across time series

@@ -1,0 +1,345 @@
+---
+title: 'São Lourenço Basin Analysis'
+description: 'Complete workflow using the São Lourenço river basin dataset'
+icon: 'map'
+---
+
+## Overview
+
+This example demonstrates a complete land use and cover (LUC) change analysis using the São Lourenço river basin dataset. The São Lourenço river basin is a major Pantanal wetland contribution area located in the Cerrado Savannah biome in southeast Mato Grosso, Brazil.
+
+## Dataset Background
+
+The dataset covers approximately 22,400 km² and includes five LUC maps from 2002, 2008, 2010, 2012, and 2014. During this 12-year period, the region experienced about 12% land cover change, including deforestation and intensification of agricultural uses.
+
+**Data Source**: 4th edition of the Monitoring of Changes in Land cover and Land Use in the Upper Paraguay River Basin - Brazilian portion, provided by Embrapa Pantanal, Instituto SOS Pantanal, and WWF-Brasil (2015).
+
+**Data Format**: The dataset is available as a 5-layer RasterStack from Zenodo [(doi:10.5281/zenodo.3685230)](https://doi.org/10.5281/zenodo.3685230).
+
+## Loading the Dataset
+
+First, download and load the São Lourenço Basin dataset:
+
+```r
+library(OpenLand)
+
+# Download the SaoLourencoBasin multi-layer raster
+url <- "https://zenodo.org/record/3685230/files/SaoLourencoBasin.rda?download=1"
+temp <- tempfile()
+download.file(url, temp, mode = "wb")
+load(temp)
+
+# Check the dataset
+SaoLourencoBasin
+```
+
+**Output**:
+```
+class      : RasterStack 
+dimensions : 1245, 1497, 1863765, 5  (nrow, ncol, ncell, nlayers)
+resolution : 30, 30  (x, y)
+names      : landscape_2002, landscape_2008, landscape_2010, landscape_2012, landscape_2014
+```
+
+## Creating the Contingency Table
+
+Extract LUC transitions from the raster time series:
+
+```r
+# Extract data with 30-meter pixel resolution
+SL_2002_2014 <- contingencyTable(input_raster = SaoLourencoBasin, 
+                                  pixelresolution = 30)
+
+# Examine the output structure
+names(SL_2002_2014)
+```
+
+**Output**:
+```
+[1] "lulc_Multistep" "lulc_Onestep"   "tb_legend"      "totalArea"      "totalInterval"
+```
+
+The `contingencyTable()` function returns five objects:
+
+- `lulc_Multistep`: Contingency table for all time steps
+- `lulc_Onestep`: Contingency table for the entire period (2002-2014)
+- `tb_legend`: Category names and colors (must be edited)
+- `totalArea`: Study area size in km² and pixels
+- `totalInterval`: Total time interval in years
+
+## Editing the Legend Table
+
+The legend must be edited to reflect actual land cover categories. The São Lourenço dataset uses Portuguese acronyms as defined in the original source:
+
+```r
+# Edit category names following the original dataset conventions
+SL_2002_2014$tb_legend$categoryName <- factor(
+  c("Ap", "FF", "SA", "SG", "aa", "SF", "Agua", "Iu", "Ac", "R", "Im"),
+  levels = c("FF", "SF", "SA", "SG", "aa", "Ap", "Ac", "Im", "Iu", "Agua", "R")
+)
+
+# Add colors matching the original study (HEX values or color names)
+SL_2002_2014$tb_legend$color <- c(
+  "#FFE4B5",  # Ap - Pasture
+  "#228B22",  # FF - Forest
+  "#00FF00",  # SA - Park Savannah
+  "#CAFF70",  # SG - Gramineous Savannah
+  "#EE6363",  # aa - Anthropized Vegetation
+  "#00CD00",  # SF - Wooded Savannah
+  "#436EEE",  # Agua - Water body
+  "#FFAEB9",  # Iu - Urban
+  "#FFA54F",  # Ac - Crop farming
+  "#68228B",  # R - Reforestation
+  "#636363"   # Im - Mining
+)
+
+# View the updated legend
+SL_2002_2014$tb_legend
+```
+
+### Category Descriptions
+
+| Acronym | Category | Type | Description |
+|---------|----------|------|-------------|
+| Ap | Pasture | Anthropic | Pasture land |
+| FF | Forest | Natural | Forest formations |
+| SA | Park Savannah | Natural | Savannah with sparse trees |
+| SG | Gramineous Savannah | Natural | Grass-dominated savannah |
+| aa | Anthropized Vegetation | Anthropic | Degraded vegetation |
+| SF | Wooded Savannah | Natural | Dense savannah woodland |
+| Agua | Water body | Natural | Rivers and lakes |
+| Iu | Urban | Anthropic | Urban areas |
+| Ac | Crop farming | Anthropic | Agricultural fields |
+| R | Reforestation | Anthropic | Planted forests |
+| Im | Mining | Anthropic | Mining areas |
+
+## Running Intensity Analysis
+
+Perform a three-level intensity analysis focusing on Pasture (Ap) gains and Gramineous Savannah (SG) losses:
+
+```r
+# Run intensity analysis
+testSL <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",  # Target category with relevant gains
+  category_m = "SG"   # Category with important losses
+)
+
+# Check the output structure
+names(testSL)
+```
+
+**Output**:
+```
+[1] "lulc_table"           "interval_lvl"         "category_lvlGain"    
+[4] "category_lvlLoss"     "transition_lvlGain_n" "transition_lvlLoss_m"
+```
+
+The analysis returns six objects representing three analysis levels:
+
+1. **Interval Level** (`interval_lvl`): Change intensity across time intervals
+2. **Category Level** (`category_lvlGain`, `category_lvlLoss`): Gains and losses per category
+3. **Transition Level** (`transition_lvlGain_n`, `transition_lvlLoss_m`): Specific transitions
+
+## Creating Visualizations
+
+### Interval Level Plot
+
+Visualize how the rate of change varies across time intervals:
+
+```r
+plot(testSL$interval_lvl,
+     labels = c(leftlabel = "Interval Change Area (%)",
+                rightlabel = "Annual Change Area (%)"),
+     marginplot = c(-8, 0), 
+     labs = c("Changes", "Uniform Rate"), 
+     leg_curv = c(x = 2/10, y = 3/10))
+```
+
+**Interpretation**: Bars above the uniform intensity line indicate fast change periods, while bars below indicate slow change periods.
+
+### Category Level - Gain Analysis
+
+Examine which categories are experiencing active or dormant gains:
+
+```r
+plot(testSL$category_lvlGain,
+     labels = c(leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Gain (%)"),
+     marginplot = c(.3, .3), 
+     labs = c("Categories", "Uniform Rate"), 
+     leg_curv = c(x = 5/10, y = 5/10),
+     fontsize_ui = 8)
+```
+
+**Expected Result**: Pasture (Ap) shows consistent gains across all intervals, indicating agricultural expansion.
+
+### Category Level - Loss Analysis
+
+Identify categories losing area:
+
+```r
+plot(testSL$category_lvlLoss,
+     labels = c(leftlabel = bquote("Loss Area (" ~ km^2 ~ ")"),
+                rightlabel = "Loss Intensity (%)"),
+     marginplot = c(.3, .3), 
+     labs = c("Categories", "Uniform Rate"), 
+     leg_curv = c(x = 5/10, y = 5/10))
+```
+
+**Interpretation**: Categories with intensities above the uniform line are experiencing targeted loss.
+
+### Transition Level - Pasture Gains
+
+Determine which categories are transitioning to pasture:
+
+```r
+plot(testSL$transition_lvlGain_n,
+     labels = c(leftlabel = bquote("Gain of Ap (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Gain of Ap (%)"),
+     marginplot = c(.3, .3), 
+     labs = c("Categories", "Uniform Rate"), 
+     leg_curv = c(x = 5/10, y = 5/10))
+```
+
+**Interpretation**: Categories with transition intensities above the uniform line are systematically targeted for conversion to pasture.
+
+### Transition Level - Savannah Losses
+
+Identify where gramineous savannah is transitioning:
+
+```r
+plot(testSL$transition_lvlLoss_m,
+     labels = c(leftlabel = bquote("Loss of SG (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Loss of SG (%)"),
+     marginplot = c(.3, .3), 
+     labs = c("Categories", "Uniform Rate"), 
+     leg_curv = c(x = 1/10, y = 5/10))
+```
+
+## Additional Visualizations
+
+### Net and Gross Changes
+
+Visualize the overall change balance:
+
+```r
+netgrossplot(dataset = SL_2002_2014$lulc_Multistep,
+             legendtable = SL_2002_2014$tb_legend,
+             xlab = "LUC Category",
+             ylab = bquote("Area (" ~ km^2 ~ ")"),
+             changesLabel = c(GC = "Gross changes", 
+                             NG = "Net Gain", 
+                             NL = "Net Loss"),
+             color = c(GC = "gray70", 
+                      NG = "#006400", 
+                      NL = "#EE2C2C"))
+```
+
+### Chord Diagram
+
+Display transitions between all categories for the entire period:
+
+```r
+chordDiagramLand(dataset = SL_2002_2014$lulc_Onestep,
+                 legendtable = SL_2002_2014$tb_legend)
+```
+
+### Sankey Diagram - Multi-step
+
+Visualize transitions across all time points:
+
+```r
+sankeyLand(dataset = SL_2002_2014$lulc_Multistep,
+           legendtable = SL_2002_2014$tb_legend)
+```
+
+### Evolution Bar Plot
+
+Show how category areas change over time:
+
+```r
+barplotLand(dataset = SL_2002_2014$lulc_Multistep, 
+            legendtable = SL_2002_2014$tb_legend,
+            xlab = "Year",
+            ylab = bquote("Area (" ~ km^2 ~ ")"),
+            area_km2 = TRUE)
+```
+
+## Interpreting Results
+
+### Key Findings
+
+1. **Interval Level**: The analysis reveals whether change is constant or accelerating/decelerating over time.
+
+2. **Category Level**: 
+   - **Active Gain**: Categories gaining area faster than the uniform rate
+   - **Dormant Gain**: Categories gaining area slower than the uniform rate
+   - **Active Loss**: Categories losing area faster than the uniform rate
+   - **Dormant Loss**: Categories losing area slower than the uniform rate
+
+3. **Transition Level**:
+   - **Targeted Transition**: Specific category pairs showing systematic conversion patterns
+   - **Uniform Transition**: Random or dispersed conversion patterns
+
+### Statistical Interpretation
+
+The **uniform intensity** represents the null hypothesis of random change. Deviations indicate non-random patterns:
+
+- Intensity > Uniform: Active or targeted change
+- Intensity < Uniform: Dormant or avoided change
+- Intensity ≈ Uniform: Random change
+
+**Stationarity**: When all time intervals show intensities consistently above or below the uniform line, the pattern is considered stationary.
+
+## Complete Workflow Script
+
+```r
+# Load package
+library(OpenLand)
+
+# Download dataset
+url <- "https://zenodo.org/record/3685230/files/SaoLourencoBasin.rda?download=1"
+temp <- tempfile()
+download.file(url, temp, mode = "wb")
+load(temp)
+
+# Extract contingency tables
+SL_2002_2014 <- contingencyTable(input_raster = SaoLourencoBasin, 
+                                  pixelresolution = 30)
+
+# Edit legend
+SL_2002_2014$tb_legend$categoryName <- factor(
+  c("Ap", "FF", "SA", "SG", "aa", "SF", "Agua", "Iu", "Ac", "R", "Im"),
+  levels = c("FF", "SF", "SA", "SG", "aa", "Ap", "Ac", "Im", "Iu", "Agua", "R")
+)
+
+SL_2002_2014$tb_legend$color <- c(
+  "#FFE4B5", "#228B22", "#00FF00", "#CAFF70", "#EE6363", "#00CD00",
+  "#436EEE", "#FFAEB9", "#FFA54F", "#68228B", "#636363"
+)
+
+# Run intensity analysis
+testSL <- intensityAnalysis(dataset = SL_2002_2014,
+                            category_n = "Ap", 
+                            category_m = "SG")
+
+# Create all plots
+plot(testSL$interval_lvl)
+plot(testSL$category_lvlGain)
+plot(testSL$category_lvlLoss)
+plot(testSL$transition_lvlGain_n)
+plot(testSL$transition_lvlLoss_m)
+
+# Additional visualizations
+netgrossplot(SL_2002_2014$lulc_Multistep, SL_2002_2014$tb_legend)
+chordDiagramLand(SL_2002_2014$lulc_Onestep, SL_2002_2014$tb_legend)
+sankeyLand(SL_2002_2014$lulc_Multistep, SL_2002_2014$tb_legend)
+barplotLand(SL_2002_2014$lulc_Multistep, SL_2002_2014$tb_legend, area_km2 = TRUE)
+```
+
+## References
+
+Embrapa Pantanal, Instituto SOS Pantanal, and WWF-Brasil. 2015. "Mapeamento da Bacia do Alto Paraguai." [https://www.embrapa.br/pantanal/bacia-do-alto-paraguai](https://www.embrapa.br/pantanal/bacia-do-alto-paraguai)
+
+Aldwaik, S.Z., and Pontius, R.G. 2012. "Intensity analysis to unify measurements of size and stationarity of land changes by interval, category, and transition." Landscape and Urban Planning 106(1): 103-114.

@@ -1,0 +1,68 @@
+---
+title: "summary_map"
+description: "Quantitative summary of a unique categorical raster"
+---
+
+## Description
+
+This function presents a summary with the pixel quantity of each category present in a categorical raster. It provides spatial screening functionality to quickly understand the composition of a single land use/cover map.
+
+## Usage
+
+```r
+summary_map(path)
+```
+
+## Arguments
+
+<ParamField path="path" type="character, RasterLayer, or RasterStack">
+  The path for the raster to be analysed. If path is a multilayer raster, only the first RasterLayer will be analysed.
+</ParamField>
+
+## Value
+
+Returns a tibble containing pixel counts for each category:
+
+- `pixvalue`: The unique pixel values (category codes) in the raster
+- `Qt`: The quantity (count) of pixels for each category
+
+## Details
+
+The function accepts input in three formats:
+1. **Character path**: File path to a raster file (loaded using `raster::raster()`)
+2. **RasterLayer**: A single raster layer object
+3. **RasterStack/RasterBrick**: Uses only the first layer from the stack
+
+This function is particularly useful for:
+- Quick quality control of categorical raster data
+- Understanding the distribution of land use/cover categories
+- Verifying that all expected categories are present in a map
+- Calculating area statistics when combined with pixel size information
+
+## Examples
+
+```r
+# Download the SaoLourencoBasin dataset
+url <- "https://zenodo.org/record/3685230/files/SaoLourencoBasin.rda?download=1"
+temp <- tempfile()
+download.file(url, temp, mode = "wb")
+load(temp)
+
+# Summarize the first layer
+summary_2002 <- summary_map(SaoLourencoBasin[[1]])
+print(summary_2002)
+
+# Example output:
+# # A tibble: 11 × 2
+#   pixvalue     Qt
+#      <dbl>  <dbl>
+# 1        1 123456
+# 2        2  98765
+# 3        3  45678
+# ...
+```
+
+## See Also
+
+- [`summary_dir()`](/api/summary-dir) - Summary of multiple raster parameters
+- [`acc_changes()`](/api/acc-changes) - Calculate accumulated changes across time series

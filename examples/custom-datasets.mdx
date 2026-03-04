@@ -1,0 +1,479 @@
+---
+title: 'Custom Datasets'
+description: 'Loading and preparing your own land use and cover data for analysis'
+icon: 'database'
+---
+
+## Overview
+
+This guide shows you how to prepare and analyze your own land use and cover (LUC) raster datasets with OpenLand. You'll learn how to load rasters, format them correctly, edit legends, and optimize performance for large datasets.
+
+## Data Requirements
+
+### File Format
+
+OpenLand accepts raster data in multiple formats:
+
+- **GeoTIFF** (.tif, .tiff) - Recommended
+- **RasterBrick** objects
+- **RasterStack** objects
+- **RasterLayer** objects
+- **List** of Raster objects
+
+### Naming Convention
+
+**Critical**: Raster files must follow the naming pattern:
+
+```
+{description}_{year}.tif
+```
+
+**Examples**:
+- `landscape_2000.tif`
+- `landuse_2010.tif`
+- `myregion_2020.tif`
+
+The underscore separator and year suffix are required for OpenLand to correctly identify and sort time steps.
+
+### Spatial Requirements
+
+All rasters in your time series must have:
+
+- **Identical extent**: Same geographic boundaries
+- **Identical resolution**: Same pixel size
+- **Identical projection**: Same coordinate reference system
+- **Integer pixel values**: Categories encoded as whole numbers (1, 2, 3, etc.)
+
+## Loading Data from Files
+
+### Method 1: Directory Path
+
+Load all `.tif` files from a directory:
+
+```r
+library(OpenLand)
+
+# Specify the directory containing your GeoTIFF files
+my_data <- contingencyTable(
+  input_raster = "/path/to/raster/directory/",
+  pixelresolution = 30  # Your pixel size in meters
+)
+```
+
+OpenLand automatically:
+- Lists all `.tif` files in the directory
+- Sorts them by filename
+- Stacks them into a time series
+- Extracts transition data
+
+### Method 2: RasterStack or RasterBrick
+
+Load rasters already in R:
+
+```r
+library(raster)
+library(OpenLand)
+
+# Create a RasterStack from individual files
+raster_2000 <- raster("/path/to/landscape_2000.tif")
+raster_2010 <- raster("/path/to/landscape_2010.tif")
+raster_2020 <- raster("/path/to/landscape_2020.tif")
+
+my_stack <- stack(raster_2000, raster_2010, raster_2020)
+
+# Process with OpenLand
+my_data <- contingencyTable(
+  input_raster = my_stack,
+  pixelresolution = 30
+)
+```
+
+### Method 3: Named List
+
+Use a named list of rasters:
+
+```r
+# Create a named list (names must include year with underscore)
+raster_list <- list(
+  landscape_2000 = raster("/path/to/landscape_2000.tif"),
+  landscape_2010 = raster("/path/to/landscape_2010.tif"),
+  landscape_2020 = raster("/path/to/landscape_2020.tif")
+)
+
+my_data <- contingencyTable(
+  input_raster = raster_list,
+  pixelresolution = 30
+)
+```
+
+## Data Validation
+
+### Check Raster Consistency
+
+Before processing, verify your rasters are compatible:
+
+```r
+library(raster)
+
+# Load your rasters
+r1 <- raster("/path/to/landscape_2000.tif")
+r2 <- raster("/path/to/landscape_2010.tif")
+r3 <- raster("/path/to/landscape_2020.tif")
+
+# Check if rasters are comparable
+compareRaster(r1, r2, r3, extent = TRUE, rowcol = TRUE, crs = TRUE)
+```
+
+If `compareRaster()` returns `TRUE`, your rasters are compatible.
+
+### Summary Functions
+
+Use OpenLand's built-in validation functions:
+
+```r
+# Check a single raster map
+summary_map("/path/to/landscape_2000.tif")
+```
+
+**Output**:
+```
+  categoryValue Freq
+1             1  1500
+2             2  2300
+3             3   800
+4             4  1100
+```
+
+```r
+# Check all rasters in a directory
+summary_dir("/path/to/raster/directory/")
+```
+
+**Output**: Lists extent, resolution, projection, and category range for each file.
+
+## Preparing Category Legends
+
+### Understanding the Legend Table
+
+After running `contingencyTable()`, you receive a legend table with three columns:
+
+- `categoryValue`: The pixel value (integer)
+- `categoryName`: Random placeholder names (must be edited)
+- `color`: Random colors (must be edited)
+
+### Editing Category Names
+
+```r
+# Example: Forest cover classification
+my_data$tb_legend$categoryName <- factor(
+  c("Dense Forest", "Open Forest", "Shrubland", "Grassland", "Cropland", "Urban", "Water"),
+  levels = c("Water", "Urban", "Cropland", "Grassland", "Shrubland", "Open Forest", "Dense Forest")
+)
+```
+
+**Important**:
+- Names must be in the same order as `categoryValue`
+- The `levels` parameter controls the legend display order
+- Use descriptive, consistent names
+
+### Assigning Colors
+
+Colors must match the order of `categoryValue`:
+
+```r
+# Using HEX color codes (recommended for precision)
+my_data$tb_legend$color <- c(
+  "#1B5E20",  # categoryValue 1 - Dense Forest (dark green)
+  "#4CAF50",  # categoryValue 2 - Open Forest (medium green)
+  "#8BC34A",  # categoryValue 3 - Shrubland (light green)
+  "#FDD835",  # categoryValue 4 - Grassland (yellow)
+  "#FF9800",  # categoryValue 5 - Cropland (orange)
+  "#757575",  # categoryValue 6 - Urban (gray)
+  "#2196F3"   # categoryValue 7 - Water (blue)
+)
+
+# Alternatively, use R color names
+my_data$tb_legend$color <- c(
+  "darkgreen", "forestgreen", "lightgreen", 
+  "yellow", "orange", "gray", "blue"
+)
+```
+
+### Verify Your Legend
+
+Always check the legend table after editing:
+
+```r
+my_data$tb_legend
+```
+
+**Expected output**:
+```
+  categoryValue   categoryName    color
+1             1   Dense Forest #1B5E20
+2             2    Open Forest #4CAF50
+3             3      Shrubland #8BC34A
+4             4      Grassland #FDD835
+5             5       Cropland #FF9800
+6             6          Urban #757575
+7             7          Water #2196F3
+```
+
+## Determining Pixel Resolution
+
+The `pixelresolution` parameter is crucial for area calculations:
+
+```r
+# Check pixel resolution of your raster
+library(raster)
+r <- raster("/path/to/landscape_2000.tif")
+res(r)
+```
+
+**Output**: `[1] 30 30` (30 meters in x and y directions)
+
+**Common resolutions**:
+- Landsat: 30 meters
+- Sentinel-2: 10 or 20 meters
+- MODIS: 250, 500, or 1000 meters
+- Custom: varies
+
+Use the x-direction value (first number) in `contingencyTable()`.
+
+## Complete Example Workflow
+
+Here's a complete example analyzing agricultural expansion:
+
+```r
+library(OpenLand)
+library(raster)
+
+# Step 1: Validate rasters
+dir_path <- "/data/agricultural_study/"
+rasters <- list.files(dir_path, pattern = ".tif$", full.names = TRUE)
+
+# Check first and last raster compatibility
+r_first <- raster(rasters[1])
+r_last <- raster(rasters[length(rasters)])
+compareRaster(r_first, r_last, extent = TRUE, rowcol = TRUE, crs = TRUE)
+
+# Step 2: Get pixel resolution
+pixel_size <- res(r_first)[1]
+print(paste("Pixel size:", pixel_size, "meters"))
+
+# Step 3: Extract data
+ag_data <- contingencyTable(
+  input_raster = dir_path,
+  pixelresolution = pixel_size
+)
+
+# Step 4: Edit legend (based on your classification scheme)
+ag_data$tb_legend$categoryName <- factor(
+  c("Forest", "Savanna", "Pasture", "Annual Crops", "Perennial Crops", "Urban"),
+  levels = c("Forest", "Savanna", "Pasture", "Annual Crops", "Perennial Crops", "Urban")
+)
+
+ag_data$tb_legend$color <- c(
+  "#1B5E20",  # Forest - dark green
+  "#8BC34A",  # Savanna - light green
+  "#FDD835",  # Pasture - yellow
+  "#FF9800",  # Annual Crops - orange
+  "#FF5722",  # Perennial Crops - red
+  "#757575"   # Urban - gray
+)
+
+# Step 5: Verify legend
+print(ag_data$tb_legend)
+
+# Step 6: Run intensity analysis
+# Choose categories based on your research question
+ag_analysis <- intensityAnalysis(
+  dataset = ag_data,
+  category_n = "Pasture",        # Category with expected gains
+  category_m = "Forest"          # Category with expected losses
+)
+
+# Step 7: Generate visualizations
+plot(ag_analysis$interval_lvl)
+plot(ag_analysis$category_lvlGain)
+plot(ag_analysis$category_lvlLoss)
+```
+
+## Best Practices for Large Datasets
+
+### Memory Management
+
+Large rasters can consume significant memory:
+
+```r
+# Enable raster package options for large files
+library(raster)
+
+# Set maximum memory for raster operations (in GB)
+rasterOptions(maxmemory = 1e+09)  # 1 GB
+
+# Set temporary directory for large files
+rasterOptions(tmpdir = "/path/to/temp/directory/")
+
+# Process with OpenLand
+my_data <- contingencyTable(
+  input_raster = "/path/to/large/rasters/",
+  pixelresolution = 30
+)
+```
+
+### Processing Time Considerations
+
+For very large datasets:
+
+1. **Test with a subset**: Crop a smaller region first
+2. **Monitor progress**: OpenLand shows progress during `crosstab` operations
+3. **Save intermediate results**: Save the output of `contingencyTable()`
+
+```r
+# Save processed data
+saveRDS(my_data, "my_dataset_processed.rds")
+
+# Load later without reprocessing
+my_data <- readRDS("my_dataset_processed.rds")
+```
+
+### Optimizing Raster Files
+
+**Before processing**:
+
+```r
+library(raster)
+
+# Read original raster
+r <- raster("/path/to/original.tif")
+
+# Write as optimized GeoTIFF
+writeRaster(
+  r,
+  filename = "/path/to/optimized.tif",
+  format = "GTiff",
+  datatype = "INT1U",        # Use smallest integer type for your data
+  options = c("COMPRESS=LZW", "TFW=YES"),
+  overwrite = TRUE
+)
+```
+
+### Handling Missing Data
+
+If your rasters have NA values:
+
+```r
+# Check for NA values
+freq(r, useNA = "ifany")
+
+# OpenLand automatically excludes NA pixels from analysis
+# No additional handling needed
+```
+
+## Common Issues and Solutions
+
+### Issue: "maps not found"
+
+**Cause**: No `.tif` files in the specified directory.
+
+**Solution**: 
+- Verify the directory path
+- Ensure files have `.tif` extension
+- Check file naming convention includes underscore and year
+
+### Issue: "Rasters do not match"
+
+**Cause**: Rasters have different extents, resolutions, or projections.
+
+**Solution**: Reproject and resample to match:
+
+```r
+library(raster)
+
+# Use first raster as reference
+reference <- raster("/path/to/landscape_2000.tif")
+target <- raster("/path/to/landscape_2010.tif")
+
+# Reproject and resample
+target_matched <- projectRaster(
+  target, 
+  reference, 
+  method = "ngb"  # Use "ngb" (nearest neighbor) for categorical data
+)
+
+# Save matched raster
+writeRaster(target_matched, "/path/to/landscape_2010_matched.tif")
+```
+
+### Issue: Incorrect time ordering
+
+**Cause**: Files not sorted correctly by year.
+
+**Solution**: Verify naming convention:
+
+```r
+# List files to check order
+list.files("/path/to/rasters/", pattern = ".tif$")
+
+# Files should appear in chronological order
+# If not, rename files following the {name}_{year}.tif pattern
+```
+
+### Issue: Colors not displaying correctly
+
+**Cause**: Color vector length doesn't match number of categories.
+
+**Solution**: 
+
+```r
+# Check number of categories
+nrow(my_data$tb_legend)
+
+# Provide exact number of colors
+length(my_data$tb_legend$color) == nrow(my_data$tb_legend)
+```
+
+## Testing with Sample Data
+
+Before processing your full dataset, test with sample data:
+
+```r
+# Create small test rasters
+library(raster)
+
+# Generate synthetic test data
+test1 <- raster(ncol = 100, nrow = 100)
+values(test1) <- sample(1:5, ncell(test1), replace = TRUE)
+writeRaster(test1, "test_landscape_2000.tif")
+
+test2 <- raster(ncol = 100, nrow = 100)
+values(test2) <- sample(1:5, ncell(test2), replace = TRUE)
+writeRaster(test2, "test_landscape_2010.tif")
+
+# Test OpenLand workflow
+test_data <- contingencyTable(
+  input_raster = list(
+    landscape_2000 = test1,
+    landscape_2010 = test2
+  ),
+  pixelresolution = 30
+)
+
+# Verify output structure
+names(test_data)
+```
+
+## Next Steps
+
+Once your data is loaded and legends are prepared:
+
+1. Run [Intensity Analysis](/api/intensity-analysis) to identify change patterns
+2. Create [visualizations](/examples/advanced-plotting) to communicate results
+3. Explore [spatial analysis functions](/api/acc-changes) like `acc_changes()` for spatial analysis
+
+## Additional Resources
+
+- **Raster package documentation**: [https://rspatial.org/raster/](https://rspatial.org/raster/)
+- **GeoTIFF specification**: [https://www.earthdatascience.org/courses/earth-analytics/](https://www.earthdatascience.org/courses/earth-analytics/)
+- **Color palette generators**: [ColorBrewer](https://colorbrewer2.org/), [Coolors](https://coolors.co/)

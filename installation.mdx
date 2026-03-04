@@ -1,0 +1,222 @@
+---
+title: Installation
+description: How to install OpenLand from CRAN or GitHub
+---
+
+## Install from CRAN
+
+The stable release of OpenLand is available on CRAN. This is the recommended installation method for most users:
+
+```r
+install.packages("OpenLand")
+```
+
+This will automatically install all required dependencies.
+
+## Install from GitHub
+
+To access the latest development features or bug fixes, install directly from GitHub:
+
+```r
+# Install devtools if you don't have it
+install.packages("devtools")
+
+# Install OpenLand from GitHub
+devtools::install_github("reginalexavier/OpenLand")
+```
+
+<Note>
+The development version may contain experimental features and is recommended only for users who need cutting-edge functionality or want to contribute to package development.
+</Note>
+
+## System Requirements
+
+### R Version
+
+OpenLand requires **R ≥ 3.4.0**. Check your R version:
+
+```r
+R.version.string
+```
+
+If you need to update R, download the latest version from [CRAN](https://cran.r-project.org/).
+
+### Dependencies
+
+OpenLand automatically installs the following required packages:
+
+<AccordionGroup>
+  <Accordion title="Core Dependencies" icon="puzzle-piece">
+    - **dplyr** (≥ 0.8.3) - Data manipulation
+    - **tidyr** (≥ 1.0.0) - Data tidying
+    - **ggplot2** (≥ 3.2.1) - Plotting
+    - **gridExtra** (≥ 2.3) - Arranging plots
+    - **grid** - Base graphics
+  </Accordion>
+  
+  <Accordion title="Spatial & Visualization" icon="map">
+    - **raster** (≥ 3.0.7) - Raster data handling
+    - **circlize** (≥ 0.4.8) - Chord diagrams
+    - **networkD3** (≥ 0.4) - Sankey diagrams
+    - **methods** - S4 class system
+  </Accordion>
+  
+  <Accordion title="Optional Packages" icon="plus">
+    - **tmap** - Enhanced spatial visualization
+    - **knitr** - Vignette rendering
+    - **rmarkdown** - Documentation
+  </Accordion>
+</AccordionGroup>
+
+### Manual Dependency Installation
+
+If you encounter dependency issues, install them manually:
+
+```r
+install.packages(c(
+  "dplyr", "tidyr", "ggplot2", "gridExtra", "grid",
+  "circlize", "networkD3", "raster", "methods"
+))
+```
+
+## Verification
+
+After installation, verify that OpenLand is working correctly:
+
+<Steps>
+  <Step title="Load the package">
+    ```r
+    library(OpenLand)
+    ```
+    
+    If successful, you should see no error messages.
+  </Step>
+  
+  <Step title="Check package version">
+    ```r
+    packageVersion("OpenLand")
+    ```
+    
+    This displays the installed version number.
+  </Step>
+  
+  <Step title="Test with sample data">
+    ```r
+    # Load the built-in dataset
+    data(SL_2002_2014)
+    
+    # Check the structure
+    names(SL_2002_2014)
+    ```
+    
+    Expected output:
+    ```r
+    [1] "lulc_Multistep" "lulc_Onestep"   "tb_legend"      
+    [4] "totalArea"      "totalInterval"
+    ```
+  </Step>
+  
+  <Step title="Access documentation">
+    ```r
+    # Open the main package help
+    ?OpenLand
+    
+    # Browse vignettes
+    browseVignettes("OpenLand")
+    ```
+  </Step>
+</Steps>
+
+## Download Example Dataset
+
+The package includes preprocessed data (`SL_2002_2014`), but you can also download the original raster dataset:
+
+```r
+# Download the São Lourenço Basin RasterStack
+url <- "https://zenodo.org/record/3685230/files/SaoLourencoBasin.rda?download=1"
+temp <- tempfile()
+download.file(url, temp, mode = "wb")
+load(temp)
+
+# Verify the raster
+SaoLourencoBasin
+```
+
+<Note>
+The São Lourenço Basin dataset is approximately 22,400 km² covering the years 2002, 2008, 2010, 2012, and 2014. It's provided by Embrapa Pantanal, Instituto SOS Pantanal, and WWF-Brasil.
+</Note>
+
+## Troubleshooting
+
+### Installation Fails on Linux
+
+Some spatial packages require system libraries. On Ubuntu/Debian:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  libgdal-dev \
+  libproj-dev \
+  libgeos-dev \
+  libudunits2-dev
+```
+
+On Fedora/CentOS:
+
+```bash
+sudo yum install gdal-devel proj-devel geos-devel udunits2-devel
+```
+
+### macOS Issues
+
+If you encounter compilation errors on macOS, ensure you have Xcode command line tools:
+
+```bash
+xcode-select --install
+```
+
+### Windows Issues
+
+Windows users may need [Rtools](https://cran.r-project.org/bin/windows/Rtools/) to compile packages from source:
+
+1. Download Rtools matching your R version
+2. Install with default settings
+3. Restart R and retry installation
+
+### Dependency Conflicts
+
+If you have package version conflicts:
+
+```r
+# Remove old package versions
+remove.packages("OpenLand")
+
+# Clear package cache
+.libPaths()  # Check library paths
+
+# Reinstall with fresh dependencies
+install.packages("OpenLand", dependencies = TRUE)
+```
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/reginalexavier/OpenLand/issues">
+    Report bugs or request features on the official repository.
+  </Card>
+  
+  <Card title="Package Documentation" icon="book">
+    Access comprehensive function documentation:
+    ```r
+    help(package = "OpenLand")
+    ```
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+Now that OpenLand is installed, you're ready to analyze land use change data:
+
+<Card title="Quick Start Tutorial" icon="play" href="/quickstart">
+  Follow a complete example using the São Lourenço Basin dataset to learn the core OpenLand workflow.
+</Card>

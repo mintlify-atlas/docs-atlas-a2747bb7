@@ -1,0 +1,65 @@
+---
+title: "acc_changes"
+description: "Accumulates changes in a LULC raster time series"
+---
+
+## Description
+
+This function calculates the number of times a pixel has changed during the analysed period. It returns a raster with the number of changes as pixel value and a table containing the areal percentage of every pixel value (number of changes).
+
+## Usage
+
+```r
+acc_changes(path)
+```
+
+## Arguments
+
+<ParamField path="path" type="character or list">
+  The path for the Raster* directory or list of Raster* to be analysed.
+</ParamField>
+
+## Value
+
+Returns a list containing two objects:
+
+1. **RasterLayer**: A raster where each pixel value represents the number of times that pixel changed during the time series
+2. **Table**: A tibble with three columns:
+   - `PxValue`: The pixel value (number of changes)
+   - `Qt`: The quantity of pixels with that number of changes
+   - `Percent`: The areal percentage of pixels with that number of changes
+
+## Details
+
+The function works by:
+1. Loading all raster layers from the specified path or list
+2. Comparing consecutive time steps to identify where changes occurred
+3. Summing the total number of changes for each pixel across all time intervals
+4. Computing summary statistics about the frequency of changes
+
+This is useful for identifying areas of high turnover in land use/cover categories, which may indicate landscape instability or intensive land management.
+
+## Examples
+
+```r
+# Download the SaoLourencoBasin dataset
+url <- "https://zenodo.org/record/3685230/files/SaoLourencoBasin.rda?download=1"
+temp <- tempfile()
+download.file(url, temp, mode = "wb")
+load(temp)
+
+# Calculate accumulated changes
+result <- acc_changes(SaoLourencoBasin)
+
+# Access the raster layer
+changes_raster <- result[[1]]
+
+# Access the summary table
+changes_table <- result[[2]]
+print(changes_table)
+```
+
+## See Also
+
+- [`summary_map()`](/api/summary-map) - Quantitative summary of a single categorical raster
+- [`summary_dir()`](/api/summary-dir) - Summary of multiple raster parameters in a directory

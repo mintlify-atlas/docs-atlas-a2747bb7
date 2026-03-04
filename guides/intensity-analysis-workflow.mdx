@@ -1,0 +1,371 @@
+---
+title: 'Intensity Analysis Workflow'
+description: 'Complete workflow from data preparation to three-level intensity analysis'
+---
+
+## Overview
+
+Intensity Analysis is a quantitative method to analyze land use and cover (LUC) maps at multiple time steps. It evaluates how the size and rate of change varies across three hierarchical levels.
+
+## What is Intensity Analysis?
+
+Intensity Analysis examines LUC transitions using cross-tabulation matrices, comparing observed change intensity against a uniform (expected) change intensity.
+
+### Three Analysis Levels
+
+**Level 1 - Interval Level**  
+How does the size and speed of change vary across time intervals?
+
+**Level 2 - Category Level**  
+How do gross gains and losses vary across categories within each interval?
+
+**Level 3 - Transition Level**  
+How do specific category transitions vary from uniform expectations?
+
+<Info>
+Each level provides increasingly detailed information about land use change patterns. The method tests for **stationarity** - whether change patterns are consistent across time intervals.
+</Info>
+
+## Complete Workflow
+
+<Steps>
+
+### Load data and create contingency table
+
+First, extract LUC transitions from your raster time series:
+
+```r
+library(OpenLand)
+
+# Load sample dataset (or use your own rasters)
+url <- "https://zenodo.org/record/3685230/files/SaoLourencoBasin.rda?download=1"
+temp <- tempfile()
+download.file(url, temp, mode = "wb")
+load(temp)
+
+# Extract contingency tables
+SL_2002_2014 <- contingencyTable(input_raster = SaoLourencoBasin, 
+                                 pixelresolution = 30)
+```
+
+The `contingencyTable()` function returns 5 objects:
+
+1. **lulc_Multistep**: Transitions for all consecutive time steps
+2. **lulc_Onestep**: Transitions from first to last year only
+3. **tb_legend**: Category values, names, and colors
+4. **totalArea**: Study area in km² and pixels
+5. **totalInterval**: Total years in the time series
+
+### Edit the legend table
+
+<Warning>
+The `tb_legend` table is created with random category names and colors. You **must** edit these before analysis.
+</Warning>
+
+```r
+# View the legend structure
+SL_2002_2014$tb_legend
+
+# A tibble:
+#   categoryValue categoryName color   
+#           <dbl> <fct>        <chr>   
+# 1             2 ABC          #002F70
+# 2             3 XYZ          #0A468D
+# ...
+```
+
+Edit category names (as factor with levels in desired plot order):
+
+```r
+SL_2002_2014$tb_legend$categoryName <- factor(
+  c("Ap", "FF", "SA", "SG", "aa", "SF", "Agua", "Iu", "Ac", "R", "Im"),
+  levels = c("FF", "SF", "SA", "SG", "aa", "Ap", "Ac", "Im", "Iu", "Agua", "R")
+)
+```
+
+<Note>
+Category names:
+- **Ap** = Pasture
+- **FF** = Forest  
+- **SA** = Park Savannah
+- **SG** = Gramineous Savannah
+- **aa** = Anthropized Vegetation
+- **SF** = Wooded Savannah
+- **Agua** = Water
+- **Iu** = Urban
+- **Ac** = Crop farming
+- **R** = Reforestation
+- **Im** = Mining
+</Note>
+
+Edit colors (in same order as categoryValue column):
+
+```r
+SL_2002_2014$tb_legend$color <- c(
+  "#FFE4B5",  # Ap - Pasture
+  "#228B22",  # FF - Forest
+  "#00FF00",  # SA - Park Savannah
+  "#CAFF70",  # SG - Gramineous Savannah
+  "#EE6363",  # aa - Anthropized Vegetation
+  "#00CD00",  # SF - Wooded Savannah
+  "#436EEE",  # Agua - Water
+  "#FFAEB9",  # Iu - Urban
+  "#FFA54F",  # Ac - Crop farming
+  "#68228B",  # R - Reforestation
+  "#636363"   # Im - Mining
+)
+```
+
+### Run intensity analysis
+
+Run the three-level intensity analysis by specifying:
+- **category_n**: A category with important **gains** (target category)
+- **category_m**: A category with important **losses** (source category)
+
+```r
+my_intensity <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",  # Pasture (gaining category)
+  category_m = "SG",  # Gramineous Savannah (losing category)
+  area_km2 = TRUE     # Use km² instead of pixel counts
+)
+
+# View the output structure
+names(my_intensity)
+# [1] "lulc_table"           "interval_lvl"         
+# [3] "category_lvlGain"     "category_lvlLoss"     
+# [5] "transition_lvlGain_n" "transition_lvlLoss_m"
+```
+
+### Understand the 6 output objects
+
+**1. lulc_table**  
+Contingency table with category names (instead of codes):
+
+```r
+my_intensity$lulc_table
+
+# A tibble:
+#   Period    From To      km2 QtPixel Interval
+#   <fct>     <fct> <fct> <dbl>   <int>    <dbl>
+# 1 2012-2014 Ap    Ap    1234.    1234        2
+# 2 2012-2014 FF    FF    5678.    5678        2
+# ...
+```
+
+**2. interval_lvl** (Interval object)  
+Interval-level analysis showing change rate (St) vs. uniform rate (U):
+
+```r
+my_intensity$interval_lvl
+
+# Slot "intervalData":
+#   Period    PercentChange    St     U
+#   <fct>            <dbl> <dbl> <dbl>
+# 1 2012-2014         3.92  1.96  1.66
+# 2 2010-2012         4.24  2.12  1.66
+# ...
+```
+
+- **St**: Annual change intensity for the interval
+- **U**: Uniform intensity across entire period
+- **St > U**: Fast interval (more active than average)
+- **St < U**: Slow interval (less active than average)
+
+**3. category_lvlGain** (Category object)  
+Gain intensity (Gtj) for each category:
+
+```r
+my_intensity$category_lvlGain
+
+# Slot "categoryData":
+#   Period    To    Interval GG_km2  Gtj    St
+#   <fct>     <fct>    <int>  <dbl> <dbl> <dbl>
+# 1 2012-2014 Ap           2  612.   3.92  1.66
+# 2 2012-2014 Ac           2  110.   1.14  1.66
+# ...
+```
+
+- **Gtj**: Annual gain intensity for category j
+- **Gtj > St**: Active gain (gaining faster than average)
+- **Gtj < St**: Dormant gain (gaining slower than average)
+
+**4. category_lvlLoss** (Category object)  
+Loss intensity (Lti) for each category:
+
+```r
+my_intensity$category_lvlLoss
+
+# Similar structure to gains, showing losses
+```
+
+**5. transition_lvlGain_n** (Transition object)  
+Transitions targeting category n ("Ap" in our example):
+
+```r
+my_intensity$transition_lvlGain_n
+
+# Which categories transition TO Ap?
+# Slot "transitionData":
+#   Period    From To   Interval T_i2n_km2  Rtin   Wtn
+#   <fct>     <fct> <fct>   <int>     <dbl> <dbl> <dbl>
+# 1 2012-2014 SG    Ap          2     123.4  2.45  1.82
+# ...
+```
+
+- **Rtin**: Transition intensity from i to n
+- **Wtn**: Uniform transition intensity to n
+- **Rtin > Wtn**: Category i is "targeted by" n
+- **Rtin < Wtn**: Category i "avoids" transition to n
+
+**6. transition_lvlLoss_m** (Transition object)  
+Transitions from category m ("SG" in our example):
+
+```r
+my_intensity$transition_lvlLoss_m
+
+# Which categories does SG transition TO?
+# Similar structure showing losses from m
+```
+
+### Plot interval level results
+
+```r
+plot(my_intensity$interval_lvl,
+     labels = c(leftlabel = "Interval Change Area (%)",
+                rightlabel = "Annual Change Area (%)"),
+     marginplot = c(-8, 0), 
+     labs = c("Changes", "Uniform Rate"), 
+     leg_curv = c(x = 2/10, y = 3/10))
+```
+
+The plot shows:
+- Left bars: Total change in each interval (%)
+- Right bars: Annual change intensity (St) vs uniform line (U)
+- Bars above uniform line = fast intervals
+- Bars below uniform line = slow intervals
+
+### Plot category level results
+
+**Gain intensity:**
+
+```r
+plot(my_intensity$category_lvlGain,
+     labels = c(leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Gain (%)"),
+     marginplot = c(.3, .3), 
+     labs = c("Categories", "Uniform Rate"), 
+     leg_curv = c(x = 5/10, y = 5/10))
+```
+
+**Loss intensity:**
+
+```r
+plot(my_intensity$category_lvlLoss,
+     labels = c(leftlabel = bquote("Loss Area (" ~ km^2 ~ ")"),
+                rightlabel = "Loss Intensity (%)"),
+     marginplot = c(.3, .3),
+     labs = c("Categories", "Uniform Rate"),
+     leg_curv = c(x = 5/10, y = 5/10))
+```
+
+These plots show:
+- Left side: Area gained/lost (km²) by each category
+- Right side: Gain/loss intensity relative to uniform rate
+- Color-coded by time interval
+
+### Plot transition level results
+
+**Gains to category n:**
+
+```r
+plot(my_intensity$transition_lvlGain_n,
+     labels = c(leftlabel = bquote("Gain of Ap (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Gain of Ap (%)"),
+     marginplot = c(.3, .3),
+     labs = c("Categories", "Uniform Rate"),
+     leg_curv = c(x = 5/10, y = 5/10))
+```
+
+**Losses from category m:**
+
+```r
+plot(my_intensity$transition_lvlLoss_m,
+     labels = c(leftlabel = bquote("Loss of SG (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Loss of SG (%)"),
+     marginplot = c(.3, .3),
+     labs = c("Categories", "Uniform Rate"),
+     leg_curv = c(x = 1/10, y = 5/10))
+```
+
+These plots reveal:
+- Which categories are particularly active/dormant in transitions
+- Whether specific transitions are targeted or avoided
+- Consistency of patterns across time intervals
+
+</Steps>
+
+## Interpreting Results
+
+### Stationarity Testing
+
+At each level, OpenLand tests whether patterns are **stationary** (consistent) across time intervals.
+
+**Stationary pattern**: All intervals show the same relationship to uniform intensity
+- All above uniform → Consistently active
+- All below uniform → Consistently dormant
+
+**Non-stationary pattern**: Intervals show mixed relationships
+- Some above, some below → Changing behavior over time
+
+View stationarity results:
+
+```r
+# Category level
+my_intensity$category_lvlGain@categoryStationarity
+
+# Transition level  
+my_intensity$transition_lvlGain_n@transitionStationarity
+```
+
+### Key Metrics Summary
+
+| Level | Metric | Comparison | Interpretation |
+|-------|--------|------------|----------------|
+| Interval | St vs U | St > U | Fast interval (active period) |
+| | | St < U | Slow interval (dormant period) |
+| Category | Gtj vs St | Gtj > St | Active gain (targeting this category) |
+| | | Gtj < St | Dormant gain |
+| | Lti vs St | Lti > St | Active loss (avoiding this category) |
+| | | Lti < St | Dormant loss |
+| Transition | Rtin vs Wtn | Rtin > Wtn | Category i targeted by n |
+| | | Rtin < Wtn | Category i avoids n |
+| | Qtmj vs Vtm | Qtmj > Vtm | Category j targets m |
+| | | Qtmj < Vtm | Category j avoids m |
+
+## Using Pixel Counts Instead of Area
+
+To use pixel counts instead of km²:
+
+```r
+my_intensity <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",
+  category_m = "SG",
+  area_km2 = FALSE  # Use pixel counts
+)
+```
+
+This changes column names from `km2` to `QtPixel` in output tables.
+
+## Next Steps
+
+After completing intensity analysis:
+
+1. [Create visualizations](/guides/visualization) with Sankey diagrams, chord diagrams, and bar plots
+2. [Perform spatial analysis](/guides/spatial-analysis) to map accumulated changes
+3. Export results for publication or reporting
+
+## References
+
+Aldwaik, S. Z. and Pontius, R. G. (2012). Intensity analysis to unify measurements of size and stationarity of land changes by interval, category, and transition. *Landscape and Urban Planning*, 106(1), 103-114.

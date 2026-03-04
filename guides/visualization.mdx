@@ -1,0 +1,378 @@
+---
+title: 'Visualization Tools'
+description: 'Create Sankey diagrams, chord diagrams, and other visualizations of land use transitions'
+---
+
+## Overview
+
+OpenLand provides comprehensive visualization tools to explore and communicate land use change patterns. These functions create publication-ready graphics for one-step and multi-step transitions.
+
+## Available Visualization Functions
+
+- **sankeyLand()**: Interactive Sankey diagrams for transition flows
+- **chordDiagramLand()**: Circular chord diagrams for transition networks
+- **netgrossplot()**: Bar charts comparing net vs. gross changes
+- **barplotLand()**: Grouped bar charts showing category areas over time
+- **plot()**: S4 methods for intensity analysis objects
+
+## Sankey Diagrams
+
+Sankey diagrams visualize land use transitions as flows between time points. Flow width represents transition area.
+
+### Multi-Step Sankey
+
+Show all consecutive transitions across the entire time series:
+
+```r
+sankeyLand(dataset = SL_2002_2014$lulc_Multistep,
+           legendtable = SL_2002_2014$tb_legend)
+```
+
+This creates an interactive diagram showing:
+- Vertical nodes for each category at each time point
+- Flows connecting categories between consecutive years
+- Hover tooltips with transition details
+
+**Example interpretation:**
+```
+2002          2008          2010          2012          2014
+[FF]─────────>[FF]─────────>[FF]─────────>[FF]─────────>[FF]   (Forest persistence)
+[SG]───┐      [SG]───┐      [SG]          [SG]          [SG]   (Savannah)
+       └─────>[Ap]───┴─────>[Ap]─────────>[Ap]─────────>[Ap]   (Conversion to Pasture)
+```
+
+### One-Step Sankey
+
+Show only transitions from first to last year:
+
+```r
+sankeyLand(dataset = SL_2002_2014$lulc_Onestep,
+           legendtable = SL_2002_2014$tb_legend)
+```
+
+This simplifies the view to initial vs. final states, useful for:
+- Net change assessment
+- Communication with non-technical audiences
+- Long time series where intermediate steps obscure patterns
+
+### Customizing Sankey Diagrams
+
+```r
+sankeyLand(dataset = SL_2002_2014$lulc_Multistep,
+           legendtable = SL_2002_2014$tb_legend,
+           iterations = 100)  # Adjust layout iterations
+```
+
+**Parameters:**
+- `dataset`: Use `lulc_Multistep` or `lulc_Onestep`
+- `legendtable`: The edited `tb_legend` table with category names and colors
+- `iterations`: Number of layout iterations (default = 0, higher = better spacing)
+
+<Note>
+Sankey diagrams are built with the **networkD3** package and render as interactive HTML widgets. They work in RMarkdown documents, Shiny apps, and can be saved with `htmlwidgets::saveWidget()`.
+</Note>
+
+## Chord Diagrams
+
+Chord diagrams show one-step transitions in a circular layout, emphasizing the network structure of land use changes.
+
+### Basic Chord Diagram
+
+```r
+chordDiagramLand(dataset = SL_2002_2014$lulc_Onestep,
+                 legendtable = SL_2002_2014$tb_legend)
+```
+
+The diagram shows:
+- Categories arranged in a circle
+- First year categories on one side
+- Last year categories on opposite side
+- Ribbons connecting transitions (width = area)
+- Directional arrows showing flow direction
+
+### Customizing Chord Diagrams
+
+```r
+chordDiagramLand(
+  dataset = SL_2002_2014$lulc_Onestep,
+  legendtable = SL_2002_2014$tb_legend,
+  legposition = c(x = -1.3, y = 0),     # Legend position
+  legtitle = "Land Cover Types",        # Legend title
+  sectorcol = "gray80",                 # Year sector color
+  area_km2 = TRUE,                      # Use km² (or FALSE for pixels)
+  legendsize = 1,                       # Legend font size
+  y.intersp = 1,                        # Legend line spacing
+  x.margin = c(-1, 1)                   # Horizontal margins for legend space
+)
+```
+
+**Parameter guide:**
+
+- `legposition`: Vector `c(x, y)` for legend coordinates
+  - `x = -1.3` places legend to the left
+  - `y = 0` centers vertically
+  - Adjust based on your plot dimensions
+
+- `sectorcol`: Color for the outer arc labels (years)
+
+- `x.margin`: Extend canvas to make room for legend
+  - `c(-1, 1)` is default
+  - `c(-2, 1)` for more left space
+  - `c(-1, 2)` for more right space
+
+<Warning>
+Chord diagrams only work with **one-step** transitions (`lulc_Onestep`). Do not use with `lulc_Multistep`.
+</Warning>
+
+## Net vs. Gross Changes
+
+The `netgrossplot()` function creates a combined bar chart showing:
+- **Gross changes**: Total area that changed (gains + losses)
+- **Net gain**: Net positive change
+- **Net loss**: Net negative change
+
+### Basic Net-Gross Plot
+
+```r
+netgrossplot(dataset = SL_2002_2014$lulc_Multistep,
+             legendtable = SL_2002_2014$tb_legend,
+             xlab = "LUC Category",
+             ylab = bquote("Area (" ~ km^2 ~ ")"))
+```
+
+### Customizing the Net-Gross Plot
+
+```r
+netgrossplot(
+  dataset = SL_2002_2014$lulc_Multistep,
+  legendtable = SL_2002_2014$tb_legend,
+  title = "Net and Gross Changes 2002-2014",
+  xlab = "Land Use Category",
+  ylab = bquote("Area (" ~ km^2 ~ ")"),
+  legend_title = "Change Type",
+  changesLabel = c(
+    GC = "Gross changes", 
+    NG = "Net Gain", 
+    NL = "Net Loss"
+  ),
+  color = c(
+    GC = "gray70",   # Gross change (wider bar)
+    NG = "#006400",  # Net gain (narrower bar)
+    NL = "#EE2C2C"   # Net loss (narrower bar)
+  ),
+  area_km2 = TRUE  # Use km² instead of pixels
+)
+```
+
+**Interpretation:**
+- Wide gray bars = total gross change
+- Narrower colored bars = net change (above 0 = gain, below 0 = loss)
+- Categories with small net but large gross = high turnover
+- Categories with similar net and gross = directional change
+
+<Info>
+**Example interpretation:**
+
+If "Pasture" shows:
+- Gross change: 500 km²
+- Net gain: 450 km²
+
+This means:
+- 475 km² gained from other categories
+- 25 km² lost to other categories
+- Net result: +450 km²
+</Info>
+
+## Category Areas Over Time
+
+The `barplotLand()` function shows how category areas evolve across all time points.
+
+### Basic Bar Plot
+
+```r
+barplotLand(dataset = SL_2002_2014$lulc_Multistep,
+            legendtable = SL_2002_2014$tb_legend,
+            xlab = "Year",
+            ylab = bquote("Area (" ~ km^2 ~ ")"),
+            area_km2 = TRUE)
+```
+
+This creates a grouped bar chart with:
+- X-axis: Years (all time points in the series)
+- Y-axis: Area
+- Bars: One per category (color-coded)
+- Groups: Clustered by year
+
+### Customizing Bar Plots
+
+```r
+barplotLand(
+  dataset = SL_2002_2014$lulc_Multistep,
+  legendtable = SL_2002_2014$tb_legend,
+  title = "Land Use Evolution 2002-2014",
+  caption = "Land Cover Categories",  # Legend title
+  xlab = "Year",
+  ylab = bquote("Area (" ~ km^2 ~ ")"),
+  area_km2 = TRUE
+)
+```
+
+**Use cases:**
+- Identify dominant categories at each time point
+- Track expansion or contraction trends
+- Detect regime shifts or tipping points
+- Communicate overall landscape composition
+
+## Visualization Workflow Example
+
+<Steps>
+
+### Prepare data
+
+```r
+library(OpenLand)
+
+# Load and prepare data
+SL_2002_2014 <- contingencyTable(input_raster = SaoLourencoBasin,
+                                 pixelresolution = 30)
+
+# Edit legend
+SL_2002_2014$tb_legend$categoryName <- factor(
+  c("Ap", "FF", "SA", "SG", "aa", "SF", "Agua", "Iu", "Ac", "R", "Im"),
+  levels = c("FF", "SF", "SA", "SG", "aa", "Ap", "Ac", "Im", "Iu", "Agua", "R")
+)
+
+SL_2002_2014$tb_legend$color <- c(
+  "#FFE4B5", "#228B22", "#00FF00", "#CAFF70", "#EE6363", 
+  "#00CD00", "#436EEE", "#FFAEB9", "#FFA54F", "#68228B", "#636363"
+)
+```
+
+### Create overview visualizations
+
+```r
+# Show category evolution
+barplotLand(dataset = SL_2002_2014$lulc_Multistep,
+            legendtable = SL_2002_2014$tb_legend,
+            area_km2 = TRUE)
+
+# Show net vs gross changes
+netgrossplot(dataset = SL_2002_2014$lulc_Multistep,
+             legendtable = SL_2002_2014$tb_legend,
+             color = c(GC = "gray70", NG = "#006400", NL = "#EE2C2C"))
+```
+
+### Create transition diagrams
+
+```r
+# Multi-step Sankey (all intervals)
+sankeyLand(dataset = SL_2002_2014$lulc_Multistep,
+           legendtable = SL_2002_2014$tb_legend)
+
+# One-step Sankey (first to last)
+sankeyLand(dataset = SL_2002_2014$lulc_Onestep,
+           legendtable = SL_2002_2014$tb_legend)
+
+# Chord diagram (first to last)
+chordDiagramLand(dataset = SL_2002_2014$lulc_Onestep,
+                 legendtable = SL_2002_2014$tb_legend)
+```
+
+### Create intensity analysis plots
+
+```r
+# Run intensity analysis first
+my_intensity <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",
+  category_m = "SG"
+)
+
+# Plot interval level
+plot(my_intensity$interval_lvl,
+     labels = c(leftlabel = "Interval Change Area (%)",
+                rightlabel = "Annual Change Area (%)"),
+     marginplot = c(-8, 0))
+
+# Plot category gains
+plot(my_intensity$category_lvlGain,
+     labels = c(leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Gain (%)"),
+     marginplot = c(.3, .3))
+
+# Plot transition to Pasture
+plot(my_intensity$transition_lvlGain_n,
+     labels = c(leftlabel = bquote("Gain of Ap (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Gain of Ap (%)"),
+     marginplot = c(.3, .3))
+```
+
+</Steps>
+
+## Saving Visualizations
+
+### ggplot2-based plots (barplotLand, netgrossplot)
+
+```r
+# Save with ggsave
+p <- barplotLand(dataset = SL_2002_2014$lulc_Multistep,
+                 legendtable = SL_2002_2014$tb_legend)
+ggsave("barplot.png", plot = p, width = 10, height = 6, dpi = 300)
+```
+
+### Base R plots (chordDiagramLand, intensity plots)
+
+```r
+# Save as PNG
+png("chord_diagram.png", width = 2400, height = 2400, res = 300)
+chordDiagramLand(dataset = SL_2002_2014$lulc_Onestep,
+                 legendtable = SL_2002_2014$tb_legend)
+dev.off()
+
+# Save as PDF
+pdf("intensity_gains.pdf", width = 8, height = 5)
+plot(my_intensity$category_lvlGain)
+dev.off()
+```
+
+### Interactive plots (sankeyLand)
+
+```r
+# Save Sankey as HTML
+library(htmlwidgets)
+s <- sankeyLand(dataset = SL_2002_2014$lulc_Multistep,
+                legendtable = SL_2002_2014$tb_legend)
+saveWidget(s, "sankey.html")
+```
+
+## Tips for Publication-Quality Graphics
+
+<Tip>
+**Color selection:**
+- Use colorblind-friendly palettes
+- Ensure sufficient contrast between categories
+- Match colors to real-world appearance (green for forest, blue for water)
+- Keep colors consistent across all visualizations
+</Tip>
+
+<Tip>
+**Font and labels:**
+- Use clear, concise labels
+- Include units (km², %, etc.)
+- Use mathematical notation with `bquote()` for superscripts
+- Ensure legend is readable at final publication size
+</Tip>
+
+<Tip>
+**Layout:**
+- Adjust margins with `marginplot` to prevent label cutoff
+- Use `leg_curv` to position legends away from data
+- Test different `iterations` values for Sankey diagrams
+- Export at high resolution (300 dpi minimum)
+</Tip>
+
+## Next Steps
+
+- [Perform spatial analysis](/guides/spatial-analysis) to map accumulated changes
+- Learn about [intensity analysis interpretation](/guides/intensity-analysis-workflow#interpreting-results)
+- Explore the [Visualization API Reference](/api/sankey-land) for detailed parameter descriptions

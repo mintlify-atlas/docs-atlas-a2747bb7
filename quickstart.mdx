@@ -1,80 +1,300 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Quickstart Guide"
+description: "Get started with OpenLand in minutes"
 ---
 
-## Get started in three steps
+## Overview
 
-Get your documentation site running locally and make your first customization.
+This quickstart guide will walk you through a complete land use and cover change (LUCC) analysis workflow using OpenLand. You'll learn how to load data, run intensity analysis, and create visualizations.
 
-### Step 1: Set up your local environment
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+Before starting, make sure you have:
+
+- R version 3.4.0 or higher installed
+- OpenLand package installed ([installation guide](/installation))
+- Basic familiarity with R programming
+
+## Complete Example Workflow
+
+We'll use the São Lourenço Basin dataset, which comes bundled with OpenLand. This dataset contains five land use maps (2002, 2008, 2010, 2012, and 2014) covering approximately 22,400 km² in Brazil's Pantanal wetland region.
+
+<Steps>
+  <Step title="Load the OpenLand package">
+    Start by loading the package and accessing the sample dataset:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    ```r
+    library(OpenLand)
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    # The SL_2002_2014 dataset is included with the package
+    # It contains pre-computed contingency tables
+    data(SL_2002_2014)
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    # View the structure
+    names(SL_2002_2014)
+    ```
+    
+    <Note>
+      The `SL_2002_2014` dataset has already been processed with `contingencyTable()`. For your own raster data, see the [Raster Input Guide](/guides/raster-input).
+    </Note>
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="Customize category names and colors">
+    Edit the legend table to use meaningful category names and colors:
+    
+    ```r
+    # Set category names (Portuguese acronyms from original study)
+    SL_2002_2014$tb_legend$categoryName <- factor(
+      c("Ap", "FF", "SA", "SG", "aa", "SF", "Agua", "Iu", "Ac", "R", "Im"),
+      levels = c("FF", "SF", "SA", "SG", "aa", "Ap", "Ac", "Im", "Iu", "Agua", "R")
+    )
+    
+    # Set colors (one per category in factor order)
+    SL_2002_2014$tb_legend$color <- c(
+      "#FFE4B5",  # Ap - Pasture
+      "#228B22",  # FF - Dense Forest
+      "#00FF00",  # SA - Savannah
+      "#CAFF70",  # SG - Gramineous Savannah
+      "#EE6363",  # aa - Water (annual)
+      "#00CD00",  # SF - Semi-deciduous Forest
+      "#436EEE",  # Agua - Water
+      "#FFAEB9",  # Iu - Non-vegetated
+      "#FFA54F",  # Ac - Agriculture
+      "#68228B",  # R - Reforestation
+      "#636363"   # Im - Mosaic
+    )
+    ```
+  </Step>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Step title="Run intensity analysis">
+    Perform three-level intensity analysis, specifying categories of interest:
+    
+    ```r
+    # Run intensity analysis
+    # Ap (Pasture) is gaining category
+    # SG (Gramineous Savannah) is losing category
+    results <- intensityAnalysis(
+      dataset = SL_2002_2014,
+      category_n = "Ap",  # Target gaining category
+      category_m = "SG"   # Target losing category
+    )
+    
+    # The function returns 6 objects
+    names(results)
+    # [1] "lulc_table"           "interval_lvl"         
+    # [3] "category_lvlGain"     "category_lvlLoss"     
+    # [5] "transition_lvlGain_n" "transition_lvlLoss_m"
+    ```
+    
+    <Info>
+      Choose `category_n` as a category that experienced significant gains and `category_m` as one with notable losses. This focuses the transition-level analysis on the most relevant patterns.
+    </Info>
+  </Step>
 
-### Step 3: Go live
+  <Step title="Visualize interval-level results">
+    Plot the interval-level analysis to see change rates over time:
+    
+    ```r
+    # Plot interval-level intensity
+    plot(results$interval_lvl,
+         labels = c(leftlabel = "Interval Change Area (km²)", 
+                    rightlabel = "Annual Change Rate (%)"),
+         marginplot = c(.3, .3),
+         labs = c("Time Interval", "Uniform Rate"))
+    ```
+    
+    This plot shows whether change is accelerating, decelerating, or remaining steady across time intervals.
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="Visualize category-level results">
+    Examine which categories are gaining and losing area:
+    
+    ```r
+    # Plot category gains
+    plot(results$category_lvlGain,
+         labels = c(leftlabel = bquote("Gain Area (" ~km^2~ ")"),
+                    rightlabel = "Intensity Gain (%)"),
+         marginplot = c(.3, .3),
+         labs = c("Categories", "Uniform intensity"),
+         fontsize_ui = 8)
+    
+    # Plot category losses
+    plot(results$category_lvlLoss,
+         labels = c(leftlabel = bquote("Loss Area (" ~km^2~ ")"),
+                    rightlabel = "Intensity Loss (%)"),
+         marginplot = c(.3, .3),
+         labs = c("Categories", "Uniform intensity"),
+         fontsize_ui = 8)
+    ```
+  </Step>
 
-## Next steps
+  <Step title="Visualize transition-level results">
+    Understand which categories Pasture (Ap) is gaining from, and where Gramineous Savannah (SG) is losing to:
+    
+    ```r
+    # Plot transitions TO Pasture (category_n)
+    plot(results$transition_lvlGain_n,
+         labels = c(leftlabel = bquote("Gain of Ap (" ~km^2~ ")"),
+                    rightlabel = "Intensity of Gain from Category j (%)"),
+         marginplot = c(.3, .3),
+         labs = c("Other Categories", "Uniform intensity"))
+    
+    # Plot transitions FROM Gramineous Savannah (category_m)
+    plot(results$transition_lvlLoss_m,
+         labels = c(leftlabel = bquote("Loss of SG (" ~km^2~ ")"),
+                    rightlabel = "Intensity of Loss to Category i (%)"),
+         marginplot = c(.3, .3),
+         labs = c("Other Categories", "Uniform intensity"))
+    ```
+  </Step>
 
-Now that you have your docs running, explore these key features:
+  <Step title="Create additional visualizations">
+    Generate other useful plots to communicate your findings:
+    
+    ```r
+    # Net and gross changes
+    netgrossplot(
+      dataset = SL_2002_2014$lulc_Multistep,
+      legendtable = SL_2002_2014$tb_legend,
+      xlab = "LUC Category",
+      ylab = bquote("Area (" ~ km^2 ~ ")"),
+      changesLabel = c(GC = "Gross changes", NG = "Net Gain", NL = "Net Loss"),
+      color = c(GC = "gray70", NG = "#006400", NL = "#EE2C2C")
+    )
+    
+    # Chord diagram (one-step transitions)
+    chordDiagramLand(
+      dataset = SL_2002_2014$lulc_Onestep,
+      legendtable = SL_2002_2014$tb_legend
+    )
+    
+    # Category areas over time
+    barplotLand(
+      dataset = SL_2002_2014$lulc_Multistep,
+      legendtable = SL_2002_2014$tb_legend,
+      area_km2 = TRUE
+    )
+    ```
+  </Step>
+</Steps>
 
-<CardGroup cols={2}>
+## Working with Your Own Data
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+To analyze your own raster time series:
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+```r
+library(OpenLand)
+library(raster)
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+# 1. Load your rasters (must be named: name_year.tif)
+my_rasters <- stack("path/to/rasters/")
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+# 2. Create contingency tables
+ct <- contingencyTable(
+  input_raster = my_rasters,
+  pixelresolution = 30  # Your pixel size in meters
+)
 
-</CardGroup>
+# 3. Edit legend (category names and colors)
+ct$tb_legend$categoryName <- factor(
+  c("Forest", "Agriculture", "Urban", "Water"),
+  levels = c("Forest", "Agriculture", "Urban", "Water")
+)
+
+ct$tb_legend$color <- c("#228B22", "#FFD700", "#FF0000", "#0000FF")
+
+# 4. Run intensity analysis
+results <- intensityAnalysis(
+  dataset = ct,
+  category_n = "Urban",       # Gaining category
+  category_m = "Forest"       # Losing category
+)
+
+# 5. Plot results
+plot(results$interval_lvl)
+```
+
+<Tip>
+  Your raster files must follow the naming convention `{name}_{year}.tif` (e.g., `landscape_2020.tif`). Learn more in the [Data Preparation Guide](/concepts/data-preparation).
+</Tip>
+
+## Understanding the Output
+
+The `intensityAnalysis()` function returns an S4 object with six components:
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| `lulc_table` | data.frame | Contingency table of all transitions |
+| `interval_lvl` | Interval S4 | Interval-level analysis comparing change rates across time periods |
+| `category_lvlGain` | Category S4 | Category-level analysis of gross gains |
+| `category_lvlLoss` | Category S4 | Category-level analysis of gross losses |
+| `transition_lvlGain_n` | Transition S4 | Transition-level analysis: sources of gains for category n |
+| `transition_lvlLoss_m` | Transition S4 | Transition-level analysis: destinations of losses from category m |
+
+Each S4 object contains:
+- **Slot 1**: `lookupcolor` - Color mapping for categories
+- **Slot 2**: Data table with analysis results
+- **Slot 3**: Stationarity test results
+
+## Interpreting Results
+
+### Stationarity Tests
+
+Each analysis level includes stationarity tests that determine if patterns are consistent across time intervals:
+
+- **"Y" (Yes)**: Pattern is stationary - consistent across time
+- **"N" (No)**: Pattern is non-stationary - varies across time
+
+For example, an "Active Gain" with stationarity = "N" means the category is actively gaining at intensities that vary across time intervals.
+
+### Key Metrics
+
+- **St (Interval level)**: Observed annual rate of change in an interval
+- **U (Uniform rate)**: Expected rate if change was uniform across all intervals
+- **Gtj / Lti (Category level)**: Observed gain/loss intensity for a category
+- **Rtin / Qtmj (Transition level)**: Observed transition intensity between specific categories
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  When observed intensity > uniform intensity, the change is considered "active" or "targeted". When observed < uniform, it's "dormant" or "avoided".
 </Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="lightbulb" href="/concepts/intensity-analysis">
+    Dive deeper into the intensity analysis methodology
+  </Card>
+  <Card title="Visualization Guide" icon="chart-bar" href="/guides/visualization">
+    Learn about all visualization options and customization
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/intensity-analysis">
+    Explore detailed function documentation
+  </Card>
+  <Card title="Examples" icon="flask" href="/examples/sao-lourenco-basin">
+    See complete real-world case studies
+  </Card>
+</CardGroup>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Error: 'From' and 'To' columns not found">
+    Make sure your contingency table was created with `contingencyTable()`. This error occurs when using incorrectly formatted data.
+  </Accordion>
+  
+  <Accordion title="Plot shows no arrows or annotations">
+    Check that your `marginplot` parameter provides enough space. Try `marginplot = c(.3, .3)` or larger values.
+  </Accordion>
+  
+  <Accordion title="Category names appear as numbers">
+    You need to edit the `tb_legend$categoryName` column with factor levels. See Step 2 above.
+  </Accordion>
+  
+  <Accordion title="Colors don't match categories">
+    Ensure colors are in the same order as the factor levels in `categoryName`, not the original category values.
+  </Accordion>
+</AccordionGroup>
+
+## References
+
+Aldwaik, S. Z., & Pontius, R. G. (2012). Intensity analysis to unify measurements of size and stationarity of land changes by interval, category, and transition. *Landscape and Urban Planning*, 106(1), 103-114. [https://doi.org/10.1016/j.landurbplan.2012.02.010](https://doi.org/10.1016/j.landurbplan.2012.02.010)

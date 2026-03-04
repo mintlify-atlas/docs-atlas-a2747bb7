@@ -1,0 +1,701 @@
+---
+title: 'Advanced Plotting'
+description: 'Customizing visualizations and creating publication-quality figures'
+icon: 'chart-line'
+---
+
+## Overview
+
+This guide demonstrates advanced plotting techniques for OpenLand visualizations, including customizing plot appearance, applying ggplot2 themes, exporting high-resolution figures, and combining multiple visualizations.
+
+## Understanding OpenLand Plot Architecture
+
+OpenLand uses S4 classes and methods for plotting:
+
+- **Interval plots**: Display change rates across time intervals
+- **Category plots**: Show gains/losses for all categories  
+- **Transition plots**: Detail specific category transitions
+
+All plots are built with **ggplot2** and **gridExtra**, allowing extensive customization.
+
+## Customizing Plot Appearance
+
+### Basic Plot Parameters
+
+The `plot()` method accepts several key arguments:
+
+```r
+library(OpenLand)
+
+# Load example data (use your own data here)
+data(SL_2002_2014)
+
+testSL <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",
+  category_m = "SG"
+)
+
+# Basic plot with custom labels
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity Gain (%)"
+     ),
+     labs = c("Categories", "Uniform Intensity"),
+     marginplot = c(.3, .3),
+     leg_curv = c(x = 1, y = .5),
+     fontsize_ui = 8)
+```
+
+### Key Parameters Explained
+
+#### `labels`
+
+Axis titles for left and right panels:
+
+```r
+# Using plain text
+labels = c(
+  leftlabel = "Area (square kilometers)",
+  rightlabel = "Change Intensity (percent)"
+)
+
+# Using mathematical expressions with bquote()
+labels = c(
+  leftlabel = bquote("Area (" ~ km^2 ~ ")"),
+  rightlabel = bquote("Intensity (" ~ "%·yr"^-1 ~ ")")
+)
+
+# Using plotmath for complex equations
+labels = c(
+  leftlabel = bquote("Area (" ~ 10^3 ~ "ha)"),
+  rightlabel = expression(paste("Rate (", km^2, "/", yr, ")"))
+)
+```
+
+#### `title`
+
+Add a main title to the plot:
+
+```r
+plot(testSL$interval_lvl,
+     title = "Interval Level Analysis: São Lourenço Basin",
+     labels = c(
+       leftlabel = "Interval Change Area (%)",
+       rightlabel = "Annual Change Area (%)"
+     ))
+```
+
+#### `labs`
+
+Legend labels:
+
+```r
+# For interval plots
+labs = c(type = "Change Type", ur = "Uniform Rate")
+
+# For category/transition plots
+labs = c(type = "Land Cover Categories", ur = "Expected Rate")
+```
+
+#### `marginplot`
+
+Adjusts spacing between left and right panels:
+
+```r
+# Negative values pull panels closer
+marginplot = c(lh = -10, rh = 0)  # For interval plots
+
+# Positive values create more space
+marginplot = c(lh = 0.5, rh = 0.5)  # For category/transition plots
+
+# Fine-tune based on your data
+marginplot = c(.3, .3)  # Common balanced setting
+```
+
+#### `leg_curv`
+
+Controls the arrow pointing to the uniform intensity line:
+
+```r
+# x: controls horizontal arrow length
+# y: controls vertical arrow position
+
+# Short arrow, lower position
+leg_curv = c(x = 0.1, y = 0.1)
+
+# Long arrow, centered
+leg_curv = c(x = 5/10, y = 5/10)
+
+# Position relative to plot dimensions
+leg_curv = c(x = 1, y = 0.5)
+```
+
+#### `fontsize_ui`
+
+Size of uniform intensity percentage text:
+
+```r
+# Small text for crowded plots
+fontsize_ui = 7
+
+# Default size
+fontsize_ui = 10
+
+# Larger text for presentations
+fontsize_ui = 14
+```
+
+#### `color_bar` (Interval plots only)
+
+Colors for fast/slow change bars:
+
+```r
+plot(testSL$interval_lvl,
+     color_bar = c(
+       fast = "#B22222",   # Red for fast change
+       slow = "#006400",   # Dark green for slow change  
+       area = "gray40"     # Gray for area bars
+     ))
+
+# Using R color names
+plot(testSL$interval_lvl,
+     color_bar = c(
+       fast = "firebrick",
+       slow = "forestgreen",
+       area = "steelblue"
+     ))
+```
+
+## Using ggplot2 Themes
+
+OpenLand plots accept ggplot2 theme arguments via `...`:
+
+### Built-in Themes
+
+```r
+# Classic theme (white background, no grid)
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity (%)"
+     ),
+     theme_classic())
+
+# Minimal theme
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity (%)"
+     ),
+     theme_minimal())
+
+# Black and white theme
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity (%)"
+     ),
+     theme_bw())
+```
+
+### Custom Theme Elements
+
+```r
+library(ggplot2)
+
+# Customize text elements
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity (%)"
+     ),
+     # ggplot2 theme customizations
+     axis.text = element_text(size = 12, color = "black"),
+     axis.title = element_text(size = 14, face = "bold"),
+     legend.text = element_text(size = 11),
+     legend.title = element_text(size = 12, face = "bold"),
+     panel.background = element_rect(fill = "white"),
+     panel.grid.major = element_line(color = "gray90"),
+     panel.grid.minor = element_blank())
+```
+
+### Publication-Ready Theme
+
+```r
+# Create a reusable theme function
+pub_theme <- function() {
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = 11, color = "black"),
+    axis.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11, face = "bold"),
+    legend.position = "right",
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "gray95", color = "black"),
+    strip.text = element_text(size = 11, face = "bold")
+  )
+}
+
+# Apply to plots
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity Gain (%)"
+     ),
+     pub_theme())
+```
+
+## Exporting High-Resolution Figures
+
+### Saving Individual Plots
+
+OpenLand plots use `grid.arrange()`, so use appropriate save functions:
+
+```r
+library(ggplot2)
+library(gridExtra)
+
+# Method 1: Using png()
+png("category_gain.png", 
+    width = 3000, 
+    height = 2000, 
+    res = 300)  # 300 DPI for publication
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity Gain (%)"
+     ))
+dev.off()
+
+# Method 2: Using pdf() for vector graphics
+pdf("category_gain.pdf", 
+    width = 10,   # Width in inches
+    height = 6.5)  # Height in inches
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity Gain (%)"
+     ))
+dev.off()
+
+# Method 3: Using tiff() for maximum quality
+tiff("category_gain.tiff",
+     width = 3000,
+     height = 2000,
+     res = 300,
+     compression = "lzw")
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity Gain (%)"
+     ))
+dev.off()
+```
+
+### Recommended Export Settings
+
+**For journals**:
+```r
+# High resolution TIFF
+tiff("figure1.tiff", width = 3000, height = 2000, res = 300, compression = "lzw")
+plot(testSL$interval_lvl)
+dev.off()
+```
+
+**For presentations**:
+```r
+# PNG with moderate resolution
+png("slide_figure.png", width = 1920, height = 1080, res = 150)
+plot(testSL$interval_lvl, fontsize_ui = 14)
+dev.off()
+```
+
+**For web**:
+```r
+# Smaller PNG
+png("web_figure.png", width = 1200, height = 800, res = 96)
+plot(testSL$interval_lvl)
+dev.off()
+```
+
+**For vector graphics**:
+```r
+# PDF (scalable, no quality loss)
+pdf("figure1.pdf", width = 10, height = 6.5)
+plot(testSL$interval_lvl)
+dev.off()
+```
+
+## Combining Multiple Visualizations
+
+### Creating Multi-Panel Figures
+
+Since OpenLand plots use `grid.arrange()` internally, save plots first:
+
+```r
+library(gridExtra)
+library(grid)
+
+# You cannot directly save OpenLand plot() outputs
+# Instead, create combined figures with other plot types
+
+# Example: Combine intensity plot with net-gross plot
+png("combined_analysis.png", width = 4000, height = 2000, res = 300)
+
+par(mfrow = c(1, 2))
+
+# First panel: interval level
+plot(testSL$interval_lvl,
+     labels = c(
+       leftlabel = "Interval Change (%)",
+       rightlabel = "Annual Change (%)"
+     ))
+
+# Second panel created separately
+# (OpenLand plots cannot be easily combined in grid.arrange)
+# Best approach: save separately and combine in image editor
+
+dev.off()
+```
+
+### Sequential Plot Export
+
+```r
+# Save all analysis levels systematically
+output_dir <- "./figures/"
+dir.create(output_dir, showWarnings = FALSE)
+
+# Interval level
+pdf(paste0(output_dir, "01_interval_level.pdf"), width = 10, height = 6)
+plot(testSL$interval_lvl,
+     title = "A) Interval Level Analysis",
+     labels = c(
+       leftlabel = "Interval Change Area (%)",
+       rightlabel = "Annual Change Area (%)"
+     ))
+dev.off()
+
+# Category gain
+pdf(paste0(output_dir, "02_category_gain.pdf"), width = 10, height = 6)
+plot(testSL$category_lvlGain,
+     title = "B) Category Level - Gains",
+     labels = c(
+       leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity Gain (%)"
+     ))
+dev.off()
+
+# Category loss
+pdf(paste0(output_dir, "03_category_loss.pdf"), width = 10, height = 6)
+plot(testSL$category_lvlLoss,
+     title = "C) Category Level - Losses",
+     labels = c(
+       leftlabel = bquote("Loss Area (" ~ km^2 ~ ")"),
+       rightlabel = "Loss Intensity (%)"
+     ))
+dev.off()
+
+# Transition gain
+pdf(paste0(output_dir, "04_transition_gain.pdf"), width = 10, height = 6)
+plot(testSL$transition_lvlGain_n,
+     title = "D) Transition Level - Gain of Pasture",
+     labels = c(
+       leftlabel = bquote("Gain of Ap (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity Gain of Ap (%)"
+     ))
+dev.off()
+
+# Transition loss
+pdf(paste0(output_dir, "05_transition_loss.pdf"), width = 10, height = 6)
+plot(testSL$transition_lvlLoss_m,
+     title = "E) Transition Level - Loss of Savannah",
+     labels = c(
+       leftlabel = bquote("Loss of SG (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity Loss of SG (%)"
+     ))
+dev.off()
+
+print("All figures saved successfully!")
+```
+
+## Customizing Other Visualization Types
+
+### Net-Gross Plot Customization
+
+```r
+# Basic customization
+netgrossplot(
+  dataset = SL_2002_2014$lulc_Multistep,
+  legendtable = SL_2002_2014$tb_legend,
+  xlab = "Land Cover Category",
+  ylab = bquote("Area (" ~ km^2 ~ ")"),
+  changesLabel = c(
+    GC = "Gross Changes", 
+    NG = "Net Gain", 
+    NL = "Net Loss"
+  ),
+  color = c(
+    GC = "gray70", 
+    NG = "#006400", 
+    NL = "#EE2C2C"
+  )
+)
+
+# Save with high resolution
+png("netgross_plot.png", width = 3000, height = 2000, res = 300)
+netgrossplot(
+  dataset = SL_2002_2014$lulc_Multistep,
+  legendtable = SL_2002_2014$tb_legend,
+  xlab = "Land Cover Category",
+  ylab = bquote("Area (" ~ km^2 ~ ")"),
+  changesLabel = c(GC = "Gross", NG = "Net Gain", NL = "Net Loss"),
+  color = c(GC = "gray70", NG = "darkgreen", NL = "darkred")
+)
+dev.off()
+```
+
+### Chord Diagram Customization
+
+```r
+# Chord diagrams use the circlize package
+# Save as high-resolution PNG
+png("chord_diagram.png", width = 3000, height = 3000, res = 300)
+chordDiagramLand(
+  dataset = SL_2002_2014$lulc_Onestep,
+  legendtable = SL_2002_2014$tb_legend
+)
+dev.off()
+
+# For PDF (vector graphics)
+pdf("chord_diagram.pdf", width = 10, height = 10)
+chordDiagramLand(
+  dataset = SL_2002_2014$lulc_Onestep,
+  legendtable = SL_2002_2014$tb_legend
+)
+dev.off()
+```
+
+### Sankey Diagram Customization
+
+```r
+# Sankey diagrams are interactive HTML widgets
+# Save using htmlwidgets package
+library(htmlwidgets)
+
+# Create the Sankey
+sankey_plot <- sankeyLand(
+  dataset = SL_2002_2014$lulc_Multistep,
+  legendtable = SL_2002_2014$tb_legend
+)
+
+# Save as HTML
+saveWidget(sankey_plot, "sankey_multistep.html", selfcontained = TRUE)
+
+# For static image, use webshot
+library(webshot)
+webshot("sankey_multistep.html", "sankey_multistep.png", 
+        vwidth = 1200, vheight = 800)
+```
+
+### Bar Plot Customization
+
+```r
+# Evolution bar plot
+png("evolution_barplot.png", width = 3000, height = 2000, res = 300)
+barplotLand(
+  dataset = SL_2002_2014$lulc_Multistep, 
+  legendtable = SL_2002_2014$tb_legend,
+  xlab = "Year",
+  ylab = bquote("Area (" ~ km^2 ~ ")"),
+  area_km2 = TRUE
+)
+dev.off()
+```
+
+## Advanced Styling Examples
+
+### Example 1: Grayscale for Print
+
+```r
+# Convert colors to grayscale
+SL_2002_2014$tb_legend$color <- gray.colors(
+  n = nrow(SL_2002_2014$tb_legend),
+  start = 0.9,
+  end = 0.1
+)
+
+# Plot with grayscale theme
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity Gain (%)"
+     ),
+     theme_bw(),
+     panel.grid = element_blank())
+```
+
+### Example 2: Large Font for Presentations
+
+```r
+plot(testSL$interval_lvl,
+     labels = c(
+       leftlabel = "Interval Change (%)",
+       rightlabel = "Annual Change (%)"
+     ),
+     fontsize_ui = 18,
+     # Increase all text sizes
+     axis.text = element_text(size = 16),
+     axis.title = element_text(size = 18, face = "bold"),
+     legend.text = element_text(size = 14),
+     legend.title = element_text(size = 16, face = "bold"),
+     strip.text = element_text(size = 16))
+```
+
+### Example 3: Colorblind-Friendly Palette
+
+```r
+# Use colorblind-friendly colors
+library(RColorBrewer)
+
+# Get colorblind-safe palette
+cb_colors <- brewer.pal(n = nrow(SL_2002_2014$tb_legend), name = "Set2")
+SL_2002_2014$tb_legend$color <- cb_colors
+
+plot(testSL$category_lvlGain,
+     labels = c(
+       leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+       rightlabel = "Intensity Gain (%)"
+     ))
+```
+
+## Complete Publication Workflow
+
+```r
+library(OpenLand)
+library(ggplot2)
+
+# Load and prepare data
+data(SL_2002_2014)
+testSL <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",
+  category_m = "SG"
+)
+
+# Create output directory
+dir.create("publication_figures", showWarnings = FALSE)
+
+# Define publication theme
+pub_theme <- theme_bw() +
+  theme(
+    axis.text = element_text(size = 11, color = "black"),
+    axis.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11, face = "bold"),
+    legend.position = "right",
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "white", color = "black"),
+    strip.text = element_text(size = 11, face = "bold")
+  )
+
+# Export all figures as TIFF (300 DPI)
+figures <- list(
+  list(name = "Fig1_interval", obj = testSL$interval_lvl,
+       labels = c(leftlabel = "Interval Change Area (%)",
+                  rightlabel = "Annual Change Area (%)")),
+  list(name = "Fig2_category_gain", obj = testSL$category_lvlGain,
+       labels = c(leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+                  rightlabel = "Intensity Gain (%)")),
+  list(name = "Fig3_category_loss", obj = testSL$category_lvlLoss,
+       labels = c(leftlabel = bquote("Loss Area (" ~ km^2 ~ ")"),
+                  rightlabel = "Loss Intensity (%)")),
+  list(name = "Fig4_transition_gain", obj = testSL$transition_lvlGain_n,
+       labels = c(leftlabel = bquote("Gain of Ap (" ~ km^2 ~ ")"),
+                  rightlabel = "Intensity Gain of Ap (%)")),
+  list(name = "Fig5_transition_loss", obj = testSL$transition_lvlLoss_m,
+       labels = c(leftlabel = bquote("Loss of SG (" ~ km^2 ~ ")"),
+                  rightlabel = "Intensity Loss of SG (%)"))
+)
+
+for (fig in figures) {
+  tiff(
+    filename = paste0("publication_figures/", fig$name, ".tiff"),
+    width = 3000,
+    height = 2000,
+    res = 300,
+    compression = "lzw"
+  )
+  
+  plot(
+    fig$obj,
+    labels = fig$labels,
+    marginplot = c(.3, .3),
+    leg_curv = c(x = 0.5, y = 0.5),
+    fontsize_ui = 10,
+    pub_theme
+  )
+  
+  dev.off()
+}
+
+print("All publication figures saved!")
+```
+
+## Tips for Best Results
+
+1. **Always use vector formats (PDF, SVG) when possible** - They scale without quality loss
+
+2. **Set appropriate DPI** - 300 DPI for print, 150 DPI for presentations, 96 DPI for web
+
+3. **Test your figures** - View exported files before submission
+
+4. **Use consistent styling** - Create theme functions to ensure uniform appearance
+
+5. **Label clearly** - Use mathematical expressions (`bquote`, `expression`) for professional labels
+
+6. **Consider colorblind readers** - Use colorblind-friendly palettes or add patterns
+
+7. **Size appropriately** - Check journal requirements for figure dimensions
+
+8. **Save source code** - Keep R scripts to regenerate figures if needed
+
+## Troubleshooting
+
+**Issue**: Text cut off in exported figure
+
+**Solution**: Increase plot dimensions or adjust margins
+
+```r
+png("figure.png", width = 3500, height = 2000, res = 300)
+plot(testSL$category_lvlGain, marginplot = c(.5, .5))
+dev.off()
+```
+
+**Issue**: Legend overlaps with plot
+
+**Solution**: Adjust `leg_curv` parameter
+
+```r
+plot(testSL$category_lvlGain, leg_curv = c(x = 0.7, y = 0.3))
+```
+
+**Issue**: Uniform intensity label not visible
+
+**Solution**: Increase `fontsize_ui`
+
+```r
+plot(testSL$category_lvlGain, fontsize_ui = 12)
+```
+
+**Issue**: Colors look different when exported
+
+**Solution**: Use explicit color profiles and check in target medium
+
+```r
+png("figure.png", width = 3000, height = 2000, res = 300, type = "cairo")
+plot(testSL$category_lvlGain)
+dev.off()
+```

@@ -1,0 +1,272 @@
+---
+title: Intensity Analysis Framework
+description: Understanding the three-level intensity analysis methodology for land use and cover change
+---
+
+## Overview
+
+Intensity Analysis (IA) is a quantitative method to analyze land use and cover (LUC) maps at several time steps using cross-tabulation matrices. Each matrix summarizes the LUC change at each time interval. The framework evaluates at three levels the deviation between observed change intensity and hypothesized uniform change intensity.
+
+<Info>
+Intensity Analysis is based on the methodology described in **Aldwaik & Pontius (2012)**: "Intensity analysis to unify measurements of size and stationarity of land changes by interval, category, and transition." *Landscape and Urban Planning*, 106(1), pp. 103-114.
+</Info>
+
+## The Three-Level Framework
+
+Intensity Analysis consists of three hierarchical levels, where each level provides more detailed information than the previous one:
+
+1. **Interval Level** - Examines how size and rate of change vary across time intervals
+2. **Category Level** - Examines how size and intensity of gross losses and gains vary across categories
+3. **Transition Level** - Examines how size and intensity of transitions vary across categories
+
+At each level, the method tests for **stationarity** of patterns across time intervals.
+
+---
+
+## Interval Level Analysis
+
+The interval level indicates how the **size** and **speed** of change vary across time intervals. This is the most general level of analysis.
+
+### Key Metrics
+
+- **St** - Annual change intensity for interval *t*
+- **U** - Uniform change intensity across all intervals
+
+### Interpretation
+
+The interval level compares the observed change intensity (St) in each time interval to the uniform intensity (U) across the entire study period:
+
+- If **St > U**: The interval has a **fast** rate of change (more active than average)
+- If **St < U**: The interval has a **slow** rate of change (less active than average)
+
+### Example Code
+
+```r
+library(OpenLand)
+
+# Perform intensity analysis
+my_analysis <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",
+  category_m = "SG"
+)
+
+# View interval level results
+my_analysis$interval_lvl
+
+# Plot interval level
+plot(my_analysis$interval_lvl,
+     labels = c(leftlabel = "Interval Change Area (%)",
+                rightlabel = "Annual Change Area (%)"),
+     marginplot = c(-8, 0),
+     labs = c("Changes", "Uniform Rate"),
+     leg_curv = c(x = 2/10, y = 3/10))
+```
+
+<Note>
+The interval level analysis is particularly useful for identifying periods of rapid land use change versus periods of relative stability.
+</Note>
+
+---
+
+## Category Level Analysis
+
+The category level examines for each time interval how the **size and intensity** of gross losses and gross gains in each category vary across categories.
+
+### Key Metrics
+
+#### For Gains
+- **Gtj** - Annual intensity of gain for category *j* during interval *t*
+- **St** - Uniform intensity for the interval (from interval level)
+
+#### For Losses
+- **Lti** - Annual intensity of loss for category *i* during interval *t*
+- **St** - Uniform intensity for the interval (from interval level)
+
+### Interpretation
+
+#### Gain Analysis
+- If **Gtj > St**: Category has **active gain** (gains more intensively than uniform)
+- If **Gtj < St**: Category has **dormant gain** (gains less intensively than uniform)
+
+#### Loss Analysis
+- If **Lti > St**: Category has **active loss** (loses more intensively than uniform)
+- If **Lti < St**: Category has **dormant loss** (loses less intensively than uniform)
+
+### Example Code
+
+```r
+# View category level results for gains
+my_analysis$category_lvlGain
+
+# Plot category level gains
+plot(my_analysis$category_lvlGain,
+     labels = c(leftlabel = bquote("Gain Area (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Gain (%)"),
+     marginplot = c(.3, .3),
+     labs = c("Categories", "Uniform Rate"),
+     leg_curv = c(x = 5/10, y = 5/10))
+
+# View category level results for losses
+my_analysis$category_lvlLoss
+
+# Plot category level losses
+plot(my_analysis$category_lvlLoss,
+     labels = c(leftlabel = bquote("Loss Area (" ~ km^2 ~ ")"),
+                rightlabel = "Loss Intensity (%)"),
+     marginplot = c(.3, .3),
+     labs = c("Categories", "Uniform Rate"),
+     leg_curv = c(x = 5/10, y = 5/10))
+```
+
+<Accordion title="Understanding Active vs. Dormant Categories">
+A category is considered **active** when its gain or loss intensity exceeds the uniform intensity for that interval. This means the category is experiencing change more intensively than would be expected if all categories changed uniformly.
+
+Conversely, a **dormant** category experiences change less intensively than the uniform rate, suggesting it is relatively stable compared to other categories.
+</Accordion>
+
+---
+
+## Transition Level Analysis
+
+The transition level determines for each category how the **size and intensity** of a category's transitions vary across the other categories that are available for that transition.
+
+### Key Metrics
+
+#### For Transitions to Category *n* (Gain)
+- **Rtin** - Annual intensity of transition from category *i* to target category *n*
+- **Wtn** - Uniform intensity of transition to category *n*
+
+#### For Transitions from Category *m* (Loss)
+- **Qtmj** - Annual intensity of transition from category *m* to category *j*
+- **Vtm** - Uniform intensity of transition from category *m*
+
+### Interpretation
+
+#### Gain of Category *n*
+- If **Rtin > Wtn**: Category *i* is **targeted** by category *n* (systematic gain from *i*)
+- If **Rtin < Wtn**: Category *i* is **avoided** by category *n* (less gain from *i* than expected)
+
+#### Loss of Category *m*
+- If **Qtmj > Vtm**: Category *j* **targets** category *m* (systematic loss to *j*)
+- If **Qtmj < Vtm**: Category *j* **avoids** category *m* (less loss to *j* than expected)
+
+### Example Code
+
+```r
+# View transition level results for gains of category "Ap"
+my_analysis$transition_lvlGain_n
+
+# Plot transitions gaining "Ap" (Pasture)
+plot(my_analysis$transition_lvlGain_n,
+     labels = c(leftlabel = bquote("Gain of Ap (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Gain of Ap (%)"),
+     marginplot = c(.3, .3),
+     labs = c("Categories", "Uniform Rate"),
+     leg_curv = c(x = 5/10, y = 5/10))
+
+# View transition level results for losses of category "SG"
+my_analysis$transition_lvlLoss_m
+
+# Plot transitions losing "SG" (Gramineous Savannah)
+plot(my_analysis$transition_lvlLoss_m,
+     labels = c(leftlabel = bquote("Loss of SG (" ~ km^2 ~ ")"),
+                rightlabel = "Intensity Loss of SG (%)"),
+     marginplot = c(.3, .3),
+     labs = c("Categories", "Uniform Rate"),
+     leg_curv = c(x = 1/10, y = 5/10))
+```
+
+<Note>
+When performing `intensityAnalysis()`, you must specify two categories:
+- `category_n`: A target category that experienced relevant **gains**
+- `category_m`: A category that experienced important **losses**
+
+Choose these categories based on your research questions or preliminary exploration of the data.
+</Note>
+
+---
+
+## Stationarity Testing
+
+At each level, Intensity Analysis tests for **stationarity** of patterns across time intervals. According to Aldwaik & Pontius (2012), a pattern is considered stationary when the intensities for all time intervals reside on one side of the uniform intensity.
+
+### What is Stationarity?
+
+- **Stationary (Y)**: All time intervals show intensities consistently above OR consistently below the uniform rate
+- **Non-stationary (N)**: Intensities fluctuate above and below the uniform rate across different intervals
+
+### Accessing Stationarity Results
+
+```r
+# Category level stationarity for gains
+my_analysis$category_lvlGain@categoryStationarity
+
+# Category level stationarity for losses
+my_analysis$category_lvlLoss@categoryStationarity
+
+# Transition level stationarity for gains
+my_analysis$transition_lvlGain_n@transitionStationarity
+
+# Transition level stationarity for losses
+my_analysis$transition_lvlLoss_m@transitionStationarity
+```
+
+---
+
+## Complete Analysis Example
+
+Here's a complete workflow for performing all three levels of intensity analysis:
+
+```r
+library(OpenLand)
+
+# Step 1: Create contingency table from rasters
+SL_2002_2014 <- contingencyTable(
+  input_raster = SaoLourencoBasin,
+  pixelresolution = 30
+)
+
+# Step 2: Edit legend (category names and colors)
+SL_2002_2014$tb_legend$categoryName <- factor(
+  c("Ap", "FF", "SA", "SG", "aa", "SF", "Agua", "Iu", "Ac", "R", "Im"),
+  levels = c("FF", "SF", "SA", "SG", "aa", "Ap", "Ac", "Im", "Iu", "Agua", "R")
+)
+
+SL_2002_2014$tb_legend$color <- c(
+  "#FFE4B5", "#228B22", "#00FF00", "#CAFF70", "#EE6363", "#00CD00",
+  "#436EEE", "#FFAEB9", "#FFA54F", "#68228B", "#636363"
+)
+
+# Step 3: Perform intensity analysis
+results <- intensityAnalysis(
+  dataset = SL_2002_2014,
+  category_n = "Ap",  # Pasture (gained area)
+  category_m = "SG",  # Gramineous Savannah (lost area)
+  area_km2 = TRUE
+)
+
+# Step 4: Examine results
+names(results)
+# [1] "lulc_table"           "interval_lvl"         "category_lvlGain"
+# [4] "category_lvlLoss"     "transition_lvlGain_n" "transition_lvlLoss_m"
+```
+
+<Accordion title="Understanding the Output Objects">
+The `intensityAnalysis()` function returns a list with 6 objects:
+
+1. **lulc_table**: Contingency table with category names (instead of numeric codes)
+2. **interval_lvl**: An `Interval` object containing St and U values
+3. **category_lvlGain**: A `Category` object with gain metrics (Gtj)
+4. **category_lvlLoss**: A `Category` object with loss metrics (Lti)
+5. **transition_lvlGain_n**: A `Transition` object for gains of category *n* (Rtin and Wtn)
+6. **transition_lvlLoss_m**: A `Transition` object for losses of category *m* (Qtmj and Vtm)
+</Accordion>
+
+---
+
+## References
+
+- Aldwaik, S. Z. and Pontius, R. G. (2012). Intensity analysis to unify measurements of size and stationarity of land changes by interval, category, and transition. *Landscape and Urban Planning*, 106(1), pp. 103-114. [DOI: 10.1016/j.landurbplan.2012.02.010](https://doi.org/10.1016/j.landurbplan.2012.02.010)
+
+- Aldwaik, S. Z. and Pontius, R. G. (2013). Map errors that could account for deviations from a uniform intensity of land change. *International Journal of Geographical Information Science*, 27(9), pp. 1717-1739. [DOI: 10.1080/13658816.2013.787618](https://doi.org/10.1080/13658816.2013.787618)
