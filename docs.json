@@ -98,6 +98,12 @@
               "api/classes/category",
               "api/classes/transition"
             ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/demo-landscape"
+            ]
           }
         ]
       }

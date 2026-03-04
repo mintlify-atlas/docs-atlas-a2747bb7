@@ -1,0 +1,245 @@
+---
+title: ".demo_landscape"
+description: "Create demo raster landscapes for testing"
+---
+
+## Overview
+
+The `.demo_landscape()` function is an internal utility that creates synthetic raster time series with random pixel values. This is useful for testing, demonstrations, and learning how to use OpenLand without real data.
+
+<Note>
+  This is primarily an internal function for package development and testing. For production analysis, use real raster data with `contingencyTable()`.
+</Note>
+
+## Function Signature
+
+```r
+.demo_landscape(
+  year,
+  nrows = 100,
+  ncols = 100,
+  res = 1,
+  xmn = 0,
+  xmx = 100,
+  ymn = 0,
+  ymx = 100,
+  crs = NA,
+  category = 1:5,
+  prob = NULL
+)
+```
+
+## Parameters
+
+<ParamField path="year" type="numeric vector" required>
+  A vector of years for the time series (e.g., `2000:2005`). First and last years are included.
+</ParamField>
+
+<ParamField path="nrows" type="numeric" default="100">
+  Number of rows in the generated raster.
+</ParamField>
+
+<ParamField path="ncols" type="numeric" default="100">
+  Number of columns in the generated raster.
+</ParamField>
+
+<ParamField path="res" type="numeric" default="1">
+  Spatial resolution of the raster cells.
+</ParamField>
+
+<ParamField path="xmn" type="numeric" default="0">
+  Minimum x coordinate (left edge).
+</ParamField>
+
+<ParamField path="xmx" type="numeric" default="100">
+  Maximum x coordinate (right edge).
+</ParamField>
+
+<ParamField path="ymn" type="numeric" default="0">
+  Minimum y coordinate (bottom edge).
+</ParamField>
+
+<ParamField path="ymx" type="numeric" default="100">
+  Maximum y coordinate (top edge).
+</ParamField>
+
+<ParamField path="crs" type="character" default="NA">
+  Coordinate reference system. Use proj4 string format or NA for no projection.
+</ParamField>
+
+<ParamField path="category" type="numeric vector" default="1:5">
+  Vector of land use category values to randomly assign to pixels.
+</ParamField>
+
+<ParamField path="prob" type="numeric vector" default="NULL">
+  Probability weights for each category. If `NULL`, all categories have equal probability.
+</ParamField>
+
+## Return Value
+
+Returns a named list of `RasterLayer` objects, one for each year. Each raster:
+- Has dimensions `nrows` × `ncols`
+- Contains pixel values randomly sampled from `category`
+- Is named following the convention `landscape_{year}`
+- Can be used directly with `contingencyTable()`
+
+## Usage Examples
+
+### Basic Demo Landscape
+
+Create a simple 5-year landscape with default settings:
+
+```r
+library(OpenLand)
+
+# Create demo landscape for 2000-2004
+demo <- .demo_landscape(year = 2000:2004)
+
+# View the structure
+names(demo)
+# [1] "landscape_2000" "landscape_2001" "landscape_2002" 
+# [4] "landscape_2003" "landscape_2004"
+
+# Check the first raster
+demo[[1]]
+```
+
+### Custom Extent and Projection
+
+Create a landscape with UTM projection:
+
+```r
+# Create demo with UTM Zone 21 South
+demo_utm <- .demo_landscape(
+  year = 2010:2015,
+  nrows = 200,
+  ncols = 200,
+  res = 30,  # 30-meter resolution
+  xmn = 500000,
+  xmx = 506000,
+  ymn = 7500000,
+  ymx = 7506000,
+  crs = "+proj=utm +zone=21 +south +ellps=GRS80 +units=m +no_defs"
+)
+```
+
+### Custom Categories and Probabilities
+
+Create a landscape dominated by forest with some agriculture:
+
+```r
+# Define categories
+# 1 = Forest, 2 = Agriculture, 3 = Urban, 4 = Water
+demo_custom <- .demo_landscape(
+  year = 2015:2020,
+  nrows = 150,
+  ncols = 150,
+  category = 1:4,
+  prob = c(0.6, 0.25, 0.10, 0.05)  # 60% forest, 25% agriculture, etc.
+)
+```
+
+### Using with OpenLand Workflow
+
+Create demo data and run a complete analysis:
+
+```r
+library(OpenLand)
+
+# 1. Create demo landscape
+demo_rasters <- .demo_landscape(
+  year = 2000:2005,
+  nrows = 100,
+  ncols = 100,
+  category = 1:3,
+  prob = c(0.5, 0.3, 0.2)
+)
+
+# 2. Convert to RasterStack
+library(raster)
+demo_stack <- stack(demo_rasters)
+
+# 3. Create contingency tables
+ct <- contingencyTable(
+  input_raster = demo_stack,
+  pixelresolution = 1
+)
+
+# 4. Customize legend
+ct$tb_legend$categoryName <- factor(
+  c("Forest", "Agriculture", "Urban"),
+  levels = c("Forest", "Agriculture", "Urban")
+)
+
+ct$tb_legend$color <- c("#228B22", "#FFD700", "#FF0000")
+
+# 5. Run intensity analysis
+results <- intensityAnalysis(
+  dataset = ct,
+  category_n = "Urban",
+  category_m = "Forest"
+)
+
+# 6. Plot results
+plot(results$interval_lvl)
+```
+
+## Use Cases
+
+### Testing and Development
+
+```r
+# Quick test of contingency table creation
+test_data <- .demo_landscape(year = 2020:2022, nrows = 50, ncols = 50)
+test_stack <- stack(test_data)
+ct_test <- contingencyTable(test_data, pixelresolution = 1)
+```
+
+### Learning and Tutorials
+
+```r
+# Create simple example for teaching
+simple_demo <- .demo_landscape(
+  year = 2010:2012,
+  nrows = 20,
+  ncols = 20,
+  category = 1:2,
+  prob = c(0.7, 0.3)
+)
+
+# Easy to visualize and understand
+plot(stack(simple_demo))
+```
+
+### Benchmark Testing
+
+```r
+# Create large landscape for performance testing
+large_demo <- .demo_landscape(
+  year = 2000:2020,
+  nrows = 1000,
+  ncols = 1000,
+  category = 1:10
+)
+
+# Time the contingency table creation
+system.time({
+  ct_large <- contingencyTable(large_demo, pixelresolution = 30)
+})
+```
+
+## Important Notes
+
+<Warning>
+  The generated landscapes have **random** pixel values. They do not represent realistic spatial patterns or actual land use change processes. Use real data for production analysis.
+</Warning>
+
+<Info>
+  Since this is an internal function (prefixed with `.`), its interface may change in future package versions. For stable workflows, use `contingencyTable()` with real raster data.
+</Info>
+
+## See Also
+
+- [contingencyTable](/api/contingency-table) - Process real raster time series
+- [Data Preparation Guide](/concepts/data-preparation) - Prepare real raster data
+- [Raster Input Guide](/guides/raster-input) - Load and validate raster files
